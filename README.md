@@ -55,7 +55,7 @@ Security rules: members can read their own household; only the owner can change 
    ```bash
    npx supabase login
    npx supabase link --project-ref <your-project-ref>
-   npx supabase db push --include-seed
+   npx supabase db push --remote --include-seed
    ```
    No CLI? Paste `supabase/migrations/*.sql` and then `supabase/seed.sql` into the dashboard's SQL editor instead.
 3. Copy `.env.example` to `.env.local` and fill in the URL and publishable key from **Project Settings → API**.

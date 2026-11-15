@@ -1,204 +1,200 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCatalogue } from "@/lib/data";
-import { readPlan, readViewerId, resetDemoStore, writePlan, writeViewerId, type DemoPlan } from "@/lib/demo-store";
+import { repo } from "@/lib/data";
+import { resetDemoStore, writeViewerId } from "@/lib/demo-store";
+import { isDemoMode } from "@/lib/mode";
 import { normaliseMsisdn } from "@/lib/pricing";
-import type { Member } from "@/lib/types";
+import { UserError, type PlanLine } from "@/lib/repo/types";
+import { createClient } from "@/lib/supabase/server";
 
 export type ActionResult = { error: string } | undefined;
 
-/** Who is acting. Stands in for the Supabase session until sign-in exists. */
-async function getActor() {
-  const plan = await readPlan();
-  const viewerId = await readViewerId(plan);
-  const me = plan.members.find((m) => m.id === viewerId)!;
-  return { plan, me, isOwner: me.role === "owner" };
+/** Run a write, turning UserErrors into a message for the form. Anything else is a real bug and is rethrown. */
+async function attempt(fn: () => Promise<void>): Promise<ActionResult> {
+  try {
+    await fn();
+  } catch (e) {
+    if (e instanceof UserError) return { error: e.message };
+    throw e;
+  }
 }
 
-const ownerOnly: ActionResult = { error: "Only the household owner can do that." };
-const allocatedTotal = (members: Member[]) => members.reduce((s, m) => s + m.allocatedGb, 0);
+/** The caller's household, or a UserError. Permission checks here give friendly messages; storage enforces them too. */
+async function household() {
+  const h = await repo.getHousehold();
+  if (!h) throw new UserError("You're not in a household yet.");
+  return h;
+}
+
+async function asOwner() {
+  const h = await household();
+  if (!h.viewer.isOwner) throw new UserError("Only the household owner can do that.");
+  return h;
+}
+
+const allocatedTotal = (h: Awaited<ReturnType<typeof household>>) => h.members.reduce((s, m) => s + m.allocatedGb, 0);
+
+// ─── Onboarding ──────────────────────────────────────────────────────────────
+
+export async function createHousehold(name: string, displayName: string): Promise<ActionResult> {
+  const result = await attempt(async () => {
+    if (!displayName.trim()) throw new UserError("Tell us your name.");
+    if (!name.trim()) throw new UserError("Give your household a name.");
+    await repo.createHousehold(name.trim().slice(0, 40), displayName.trim().slice(0, 40));
+  });
+  if (result) return result;
+  redirect("/build");
+}
 
 // ─── Owner: plan and allocations ─────────────────────────────────────────────
 
 export interface PlanLineInput {
-  id?: string; // existing member id; omitted for a new line
+  id?: string;
   label: string;
   msisdn: string;
 }
 
-/**
- * Save the pool size and the set of mobile lines (step 1), then go to Allocate.
- * Existing members keep their allocations; new lines start at 0 GB and are "invited".
- * If the new pool is smaller than what's allocated, allocations shrink proportionally.
- */
+/** Save the pool size and lines (step 1), then go to Allocate. */
 export async function savePlan(poolGb: number, lines: PlanLineInput[]): Promise<ActionResult> {
-  const catalogue = await getCatalogue();
-  const { plan, isOwner } = await getActor();
-  if (!isOwner) return ownerOnly;
+  const result = await attempt(async () => {
+    const h = await asOwner();
+    const catalogue = await repo.getCatalogue();
 
-  if (!catalogue.tiers.some((t) => t.poolGb === poolGb)) return { error: "Pick one of the pool sizes." };
-  if (lines.length < 1 || lines.length > catalogue.maxLines)
-    return { error: `A household can have 1 to ${catalogue.maxLines} mobile lines.` };
+    if (!catalogue.tiers.some((t) => t.poolGb === poolGb)) throw new UserError("Pick one of the pool sizes.");
+    if (lines.length < 1 || lines.length > catalogue.maxLines)
+      throw new UserError(`A household can have 1 to ${catalogue.maxLines} mobile lines.`);
 
-  const existing = new Map(plan.members.map((m) => [m.id, m]));
-  const owner = plan.members.find((m) => m.role === "owner")!;
-  if (!lines.some((l) => l.id === owner.id)) return { error: "The owner's line can't be removed." };
+    const owner = h.members.find((m) => m.role === "owner")!;
+    if (!lines.some((l) => l.id === owner.id)) throw new UserError("The owner's line can't be removed.");
 
-  const seen = new Set<string>();
-  const nextLines: Member[] = [];
-  for (const line of lines) {
-    const label = line.label.trim();
-    if (!label || label.length > 20) return { error: "Each line needs a name of up to 20 characters." };
-    const prev = line.id ? existing.get(line.id) : undefined;
-    if (line.id && (!prev || prev.kind !== "line")) return { error: "That line no longer exists. Reload and try again." };
+    const existing = new Map(h.members.map((m) => [m.id, m]));
+    const seen = new Set<string>();
+    const clean: PlanLine[] = [];
+    for (const line of lines) {
+      const label = line.label.trim();
+      if (!label || label.length > 20) throw new UserError("Each line needs a name of up to 20 characters.");
+      const prev = line.id ? existing.get(line.id) : undefined;
+      if (line.id && (!prev || prev.kind !== "line")) throw new UserError("That line no longer exists. Reload and try again.");
 
-    const msisdn = prev?.msisdn ?? normaliseMsisdn(line.msisdn);
-    if (!msisdn) return { error: `${label}: enter a Dialog mobile number like 077 123 4567.` };
-    if (seen.has(msisdn)) return { error: `${label}: that number is already in the household.` };
-    seen.add(msisdn);
+      const msisdn = prev?.msisdn ?? normaliseMsisdn(line.msisdn);
+      if (!msisdn) throw new UserError(`${label}: enter a Dialog mobile number like 077 123 4567.`);
+      if (seen.has(msisdn)) throw new UserError(`${label}: that number is already in the household.`);
+      seen.add(msisdn);
+      clean.push({ id: line.id, label, msisdn });
+    }
 
-    nextLines.push(
-      prev
-        ? { ...prev, label }
-        : {
-            id: `line-${crypto.randomUUID().slice(0, 8)}`,
-            label,
-            kind: "line",
-            role: "member",
-            status: "invited",
-            msisdn,
-            allocatedGb: 0,
-          },
-    );
-  }
-
-  const home = plan.members.find((m) => m.kind === "home")!;
-  let members = [home, ...nextLines];
-
-  const total = allocatedTotal(members);
-  if (total > poolGb) {
-    const ratio = poolGb / total;
-    members = members.map((m) => ({ ...m, allocatedGb: Math.floor(m.allocatedGb * ratio) }));
-  }
-
-  const kept = new Set(members.map((m) => m.id));
-  await writePlan({ poolGb, members, requests: plan.requests.filter((r) => kept.has(r.memberId)) });
+    await repo.savePlan(poolGb, clean);
+  });
+  if (result) return result;
   redirect("/allocate");
 }
 
 /** Save GB per member (step 2). The total may not exceed the pool. */
 export async function saveAllocations(allocations: Record<string, number>): Promise<ActionResult> {
-  const { plan, isOwner } = await getActor();
-  if (!isOwner) return ownerOnly;
-
-  if (Object.keys(allocations).some((id) => !plan.members.some((m) => m.id === id)))
-    return { error: "Someone was removed from the household. Reload and try again." };
-  const members = plan.members.map((m) => ({ ...m, allocatedGb: allocations[m.id] ?? m.allocatedGb }));
-  if (members.some((m) => !Number.isFinite(m.allocatedGb) || m.allocatedGb < 0))
-    return { error: "Allocations must be zero or more." };
-
-  const total = allocatedTotal(members);
-  if (total > plan.poolGb) return { error: `That's ${total} GB, but the pool is ${plan.poolGb} GB.` };
-
-  await writePlan({ ...plan, members });
+  const result = await attempt(async () => {
+    const h = await asOwner();
+    if (Object.keys(allocations).some((id) => !h.members.some((m) => m.id === id)))
+      throw new UserError("Someone was removed from the household. Reload and try again.");
+    if (Object.values(allocations).some((gb) => !Number.isFinite(gb) || gb < 0))
+      throw new UserError("Allocations must be zero or more.");
+    const total = h.members.reduce((s, m) => s + (allocations[m.id] ?? m.allocatedGb), 0);
+    if (total > h.pool.sizeGb) throw new UserError(`That's ${total} GB, but the pool is ${h.pool.sizeGb} GB.`);
+    await repo.saveAllocations(allocations);
+  });
+  if (result) return result;
   redirect("/");
 }
 
 // ─── Owner: household management ─────────────────────────────────────────────
 
-/** Remove a line (or cancel its invite). Its allocation returns to the pool. */
 export async function removeMember(memberId: string): Promise<ActionResult> {
-  const { plan, isOwner } = await getActor();
-  if (!isOwner) return ownerOnly;
-
-  const member = plan.members.find((m) => m.id === memberId);
-  if (!member) return { error: "That person is no longer in the household." };
-  if (member.kind === "home" || member.role === "owner") return { error: "The home router and the owner can't be removed." };
-
-  await writePlan(withoutMember(plan, memberId));
+  return attempt(async () => {
+    const h = await asOwner();
+    const member = h.members.find((m) => m.id === memberId);
+    if (!member) throw new UserError("That person is no longer in the household.");
+    if (member.kind === "home" || member.role === "owner")
+      throw new UserError("The home router and the owner can't be removed.");
+    await repo.removeMember(memberId);
+  });
 }
 
 /** Approve (adds GB from the unallocated pool) or decline a member's request. */
 export async function respondToRequest(requestId: string, approve: boolean): Promise<ActionResult> {
-  const { plan, isOwner } = await getActor();
-  if (!isOwner) return ownerOnly;
+  return attempt(async () => {
+    const h = await asOwner();
+    const request = h.requests.find((r) => r.id === requestId);
+    if (!request || request.status !== "pending") throw new UserError("That request has already been handled.");
+    if (approve) {
+      const unallocated = h.pool.sizeGb - allocatedTotal(h);
+      if (unallocated < request.gb)
+        throw new UserError(
+          `Only ${unallocated} GB is unallocated. Free up ${request.gb - unallocated} GB in Allocate, or grow the pool.`,
+        );
+    }
+    await repo.respondToRequest(requestId, approve);
+  });
+}
 
-  const request = plan.requests.find((r) => r.id === requestId);
-  if (!request || request.status !== "pending") return { error: "That request has already been handled." };
-  const member = plan.members.find((m) => m.id === request.memberId);
-  if (!member) return { error: "That person is no longer in the household." };
-
-  let members = plan.members;
-  if (approve) {
-    const unallocated = plan.poolGb - allocatedTotal(plan.members);
-    if (unallocated < request.gb)
-      return {
-        error: `Only ${unallocated} GB is unallocated. Free up ${request.gb - unallocated} GB in Allocate, or grow the pool.`,
-      };
-    members = plan.members.map((m) => (m.id === member.id ? { ...m, allocatedGb: m.allocatedGb + request.gb } : m));
-  }
-
-  const requests = plan.requests.map((r) =>
-    r.id === requestId ? { ...r, status: approve ? ("approved" as const) : ("declined" as const) } : r,
-  );
-  await writePlan({ ...plan, members, requests });
+/** Demo helper: add some random usage so the rings and bars move. */
+export async function simulateUsage(): Promise<ActionResult> {
+  return attempt(async () => {
+    await asOwner();
+    await repo.simulateUsage();
+  });
 }
 
 // ─── Members ─────────────────────────────────────────────────────────────────
 
 /** A member asks the owner for more data. One pending request at a time. */
 export async function requestData(gb: number, note: string): Promise<ActionResult> {
-  const { plan, me, isOwner } = await getActor();
-  if (isOwner) return { error: "As the owner, you can allocate data yourself." };
-  if (me.status !== "active") return { error: "Accept your invite first." };
-  if (!Number.isInteger(gb) || gb < 1 || gb > plan.poolGb) return { error: "Pick how much data you need." };
-  if (plan.requests.some((r) => r.memberId === me.id && r.status === "pending"))
-    return { error: "You already have a request waiting for the owner." };
-
-  const request = {
-    id: `req-${crypto.randomUUID().slice(0, 8)}`,
-    memberId: me.id,
-    gb,
-    note: note.trim().slice(0, 120),
-    status: "pending" as const,
-    createdAt: new Date().toISOString(),
-  };
-  await writePlan({ ...plan, requests: [request, ...plan.requests] });
+  return attempt(async () => {
+    const h = await household();
+    const me = h.members.find((m) => m.id === h.viewer.memberId)!;
+    if (h.viewer.isOwner) throw new UserError("As the owner, you can allocate data yourself.");
+    if (me.status !== "active") throw new UserError("Accept your invite first.");
+    if (!Number.isInteger(gb) || gb < 1 || gb > h.pool.sizeGb) throw new UserError("Pick how much data you need.");
+    if (h.requests.some((r) => r.memberId === me.id && r.status === "pending"))
+      throw new UserError("You already have a request waiting for the owner.");
+    await repo.requestData(gb, note.trim().slice(0, 120));
+  });
 }
 
-/** An invited member accepts or declines joining the household. */
-export async function respondToInvite(accept: boolean): Promise<ActionResult> {
-  const { plan, me } = await getActor();
-  if (me.status !== "invited") return { error: "There's no invite to respond to." };
+/** Accept or decline an invite to join a household. */
+export async function respondToInvite(memberId: string, accept: boolean): Promise<ActionResult> {
+  const result = await attempt(async () => {
+    if (isDemoMode) {
+      const h = await household();
+      const me = h.members.find((m) => m.id === memberId);
+      if (me?.id !== h.viewer.memberId || me.status !== "invited") throw new UserError("There's no invite to respond to.");
+    }
+    await repo.respondToInvite(memberId, accept);
+  });
+  if (result) return result;
+  redirect("/");
+}
 
-  if (accept) {
-    await writePlan({ ...plan, members: plan.members.map((m) => (m.id === me.id ? { ...m, status: "active" as const } : m)) });
-  } else {
-    await writePlan(withoutMember(plan, me.id));
-    redirect("/");
-  }
+// ─── Session ─────────────────────────────────────────────────────────────────
+
+export async function signOut() {
+  if (!isDemoMode) await (await createClient()).auth.signOut();
+  redirect(isDemoMode ? "/" : "/login");
 }
 
 // ─── Demo controls ───────────────────────────────────────────────────────────
 
 /** Demo stand-in for signing in as someone else in the household. */
 export async function switchViewer(memberId: string): Promise<ActionResult> {
-  const plan = await readPlan();
-  if (!plan.members.some((m) => m.id === memberId && m.kind === "line")) return { error: "Unknown person." };
-  await writeViewerId(memberId);
+  return attempt(async () => {
+    if (!isDemoMode) throw new UserError("Only available in demo mode.");
+    const h = await household();
+    if (!h.members.some((m) => m.id === memberId && m.kind === "line")) throw new UserError("Unknown person.");
+    await writeViewerId(memberId);
+  });
 }
 
 /** Put the demo back to the deck's family-of-five example. */
 export async function resetDemo() {
-  await resetDemoStore();
+  if (isDemoMode) await resetDemoStore();
   redirect("/");
-}
-
-function withoutMember(plan: DemoPlan, memberId: string): DemoPlan {
-  return {
-    ...plan,
-    members: plan.members.filter((m) => m.id !== memberId),
-    requests: plan.requests.filter((r) => r.memberId !== memberId),
-  };
 }

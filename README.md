@@ -15,19 +15,31 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. Without Supabase keys the app runs on **demo data**: the "family of five" household from the proposition deck.
+Open <http://localhost:3000>.
+
+### Two modes
+
+| | Demo mode | Supabase mode |
+| --- | --- | --- |
+| When | No Supabase keys, or `NEXT_PUBLIC_DEMO_MODE=true` | Supabase keys set |
+| Sign-in | None. A "view as" switch on the Household tab lets you play any role | Phone number + SMS code |
+| Data | The deck's family-of-five household, saved in a cookie | Your Supabase project |
+| Extras | "Reset demo data" on Home | Owner can "Simulate a few days of usage" on Home |
+
+Demo mode is handy for presenting; set `NEXT_PUBLIC_DEMO_MODE=true` (locally or in Vercel) to force it.
 
 ## Project layout
 
 ```
 src/
-  app/                 Routes: / (home), /build, /allocate, /household
+  app/                 Routes: / (home), /build, /allocate, /household, /login, /welcome
   components/          UI pieces (bottom nav, pool ring, headers)
   lib/
-    data.ts            Data access layer. Pages only call this (demo data for now)
+    data.ts            Data access layer: picks the demo or Supabase repo
+    repo/              demo.ts (cookie) and supabase.ts behind one interface
     demo-data.ts       Demo household, price tiers, packages
     supabase/          Browser + server Supabase clients
-  proxy.ts             Refreshes the Supabase session on each request
+  proxy.ts             Refreshes the Supabase session; sends signed-out people to /login
 supabase/
   migrations/          Database schema + security rules
   seed.sql             Price tiers and packages (PLACEHOLDER prices)
@@ -59,6 +71,13 @@ Security rules: members can read their own household; only the owner can change 
    ```
    No CLI? Paste `supabase/migrations/*.sql` and then `supabase/seed.sql` into the dashboard's SQL editor instead.
 3. Copy `.env.example` to `.env.local` and fill in the URL and publishable key from **Project Settings → API**.
+4. Turn on phone sign-in: **Authentication → Sign In / Providers → Phone**.
+   - Enable it and pick an SMS provider. For testing only, placeholder credentials are fine: test numbers never send an SMS.
+   - Under **Test Phone Numbers and OTPs**, add numbers in the format `94771234567=123456` (country code, no `+`), comma-separated, and set **Valid Until**.
+   - Real users need a real SMS provider (e.g. Twilio). Remove test numbers before launch.
+5. **Authentication → URL Configuration:** Site URL = your Vercel URL; redirect URLs `http://localhost:3000/**` and `https://*.vercel.app/**`.
+
+New migrations: `npx supabase db push --remote` (dry run first with `--dry-run`).
 
 ## Deploying to Vercel
 
@@ -77,10 +96,14 @@ Every push to `main` then deploys automatically.
 - [x] Household (owner): approve/decline data requests, remove lines, cancel invites
 - [x] Household (member): own allowance, request more data, accept/decline invite; owner-only screens are locked
 - [x] Schema: `data_requests`, `respond_to_data_request()` and `respond_to_invite()` (tested on local Postgres)
-- [ ] Sign-in (phone number), replacing the demo "view as" switch on the Household tab
-- [ ] Swap the demo store (`src/lib/demo-store.ts`, a cookie) for Supabase in `src/lib/data.ts` and `src/app/actions.ts`
+- [x] Phone sign-in (Supabase OTP), onboarding (create a household or accept an invite), sign-out
+- [x] All screens read and write Supabase; demo mode kept for presenting
+- [x] Schema: `create_household()`, `save_plan()`, `save_allocations()`, `my_invites()`, `simulate_usage()`
+- [ ] Real SMS provider and production sign-in
+- [ ] Real usage feed from the network (currently simulated)
+- [ ] Sinhala and Tamil
 
-Until Supabase is connected, changes are saved in a browser cookie. "Reset demo data" at the bottom of the home screen restores the deck's family-of-five example.
+In demo mode, "Reset demo data" at the bottom of the home screen restores the deck's family-of-five example.
 
 ### Open questions (placeholders used for now)
 

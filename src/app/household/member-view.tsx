@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Clock, Loader2, Send, Sparkles } from "lucide-react";
-import { requestData, respondToInvite } from "@/app/actions";
+import { Clock, Loader2, Send } from "lucide-react";
+import { requestData } from "@/app/actions";
 import { Badge } from "@/components/badge";
+import { InviteCard } from "@/components/invite-card";
 import { MemberAvatar } from "@/components/member-avatar";
 import { formatGb } from "@/lib/format";
 import type { MemberBalance } from "@/lib/types";
@@ -24,7 +25,7 @@ export function MemberView({
   ownerName: string;
   householdName: string;
 }) {
-  if (me.status === "invited") return <InviteCard ownerName={ownerName} householdName={householdName} />;
+  if (me.status === "invited") return <InviteCard memberId={me.id} ownerName={ownerName} householdName={householdName} />;
 
   const pending = requests.find((r) => r.status === "pending");
   const history = requests.filter((r) => r.status !== "pending").slice(0, 5);
@@ -171,58 +172,5 @@ function RequestForm({ ownerName }: { ownerName: string }) {
         Ask for {gb} GB
       </button>
     </form>
-  );
-}
-
-function InviteCard({ ownerName, householdName }: { ownerName: string; householdName: string }) {
-  const [error, setError] = useState<string>();
-  const [pending, startTransition] = useTransition();
-  const [choice, setChoice] = useState<boolean>();
-
-  function respond(accept: boolean) {
-    setError(undefined);
-    setChoice(accept);
-    startTransition(async () => {
-      const result = await respondToInvite(accept);
-      if (result?.error) setError(result.error);
-    });
-  }
-
-  return (
-    <section className="px-4">
-      <div className="bg-brand-gradient overflow-hidden rounded-[var(--radius-card)] p-6 text-white shadow-lg shadow-brand-600/20">
-        <span className="grid size-12 place-items-center rounded-2xl bg-white/20">
-          <Sparkles size={22} />
-        </span>
-        <h2 className="mt-4 text-2xl font-extrabold leading-tight">
-          {ownerName} invited you to {householdName}
-        </h2>
-        <p className="mt-2 text-white/85">
-          Share one 5G data pool with the home Air Fibre and the rest of the family. {ownerName} pays and decides
-          how much each person gets. You can ask for more any time.
-        </p>
-        {error && <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-sm font-medium">{error}</p>}
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => respond(false)}
-            disabled={pending}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-white/15 font-semibold backdrop-blur transition hover:bg-white/25 disabled:opacity-60"
-          >
-            {pending && choice === false && <Loader2 size={16} className="animate-spin" />}
-            Decline
-          </button>
-          <button
-            type="button"
-            onClick={() => respond(true)}
-            disabled={pending}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-white font-bold text-brand-700 transition hover:bg-white/90 disabled:opacity-60"
-          >
-            {pending && choice === true && <Loader2 size={16} className="animate-spin" />}
-            Join household
-          </button>
-        </div>
-      </div>
-    </section>
   );
 }

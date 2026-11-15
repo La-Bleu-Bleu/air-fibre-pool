@@ -13,6 +13,8 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  // Sign-in and onboarding are full-screen flows.
+  if (pathname === "/login" || pathname === "/welcome") return null;
 
   return (
     <nav

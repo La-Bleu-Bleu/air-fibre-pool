@@ -13,11 +13,18 @@ export function monthlyPrice(catalogue: Catalogue, poolGb: number, lines: number
 /** Slider step for allocations: coarse on big pools, fine on small ones. */
 export const allocationStep = (poolGb: number) => (poolGb >= 100 ? 5 : 1);
 
-/** Sri Lankan mobile number: 07X XXX XXXX (spaces/dashes ignored). Returns normalised digits or null. */
+/**
+ * Sri Lankan mobile number typed as 077 123 4567, +94 77 123 4567 or 94771234567.
+ * Returns the number the way Supabase Auth stores phones (country code, no "+"): 94771234567. Null if invalid.
+ */
 export function normaliseMsisdn(input: string) {
-  const digits = input.replace(/[\s-]/g, "").replace(/^\+94/, "0");
-  return /^07\d{8}$/.test(digits) ? digits : null;
+  const digits = input.replace(/[\s()-]/g, "").replace(/^\+/, "");
+  const local = digits.startsWith("94") ? `0${digits.slice(2)}` : digits;
+  return /^07\d{8}$/.test(local) ? `94${local.slice(1)}` : null;
 }
 
-export const formatMsisdn = (digits: string) =>
-  `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+/** 94771234567 → "077 123 4567" */
+export function formatMsisdn(msisdn: string) {
+  const local = msisdn.startsWith("94") ? `0${msisdn.slice(2)}` : msisdn;
+  return `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+}

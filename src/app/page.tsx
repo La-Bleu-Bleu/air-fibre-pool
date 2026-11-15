@@ -5,8 +5,10 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { PoolRing } from "@/components/pool-ring";
 import { getHousehold } from "@/lib/data";
 import { daysLeft, formatGb, formatLkr } from "@/lib/format";
+import { isDemoMode } from "@/lib/mode";
 import { formatMsisdn } from "@/lib/pricing";
 import { resetDemo } from "./actions";
+import { SimulateUsageButton } from "./simulate-usage-button";
 
 export default async function HomePage() {
   const household = await getHousehold();
@@ -179,10 +181,14 @@ export default async function HomePage() {
           </p>
         )}
 
-        {/* Demo-only control; remove once real data is connected */}
-        <form action={resetDemo} className="mt-8 flex justify-center">
-          <button className="text-xs font-semibold text-muted underline-offset-2 hover:underline">Reset demo data</button>
-        </form>
+        {/* Prototype-only controls */}
+        {isDemoMode ? (
+          <form action={resetDemo} className="mt-8 flex justify-center">
+            <button className="text-xs font-semibold text-muted underline-offset-2 hover:underline">Reset demo data</button>
+          </form>
+        ) : (
+          viewer.isOwner && <SimulateUsageButton />
+        )}
       </section>
     </>
   );

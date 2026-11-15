@@ -25,11 +25,11 @@ export const demoCatalogue: Catalogue = {
 
 export const demoMembers: Member[] = [
   { id: "home", label: "Home", kind: "home", role: "member", status: "active", msisdn: null, allocatedGb: 300 },
-  { id: "me", label: "Me", kind: "line", role: "owner", status: "active", msisdn: "0771234567", allocatedGb: 60 },
-  { id: "partner", label: "Partner", kind: "line", role: "member", status: "active", msisdn: "0772345678", allocatedGb: 50 },
-  { id: "kid1", label: "Kid 1", kind: "line", role: "member", status: "active", msisdn: "0763456789", allocatedGb: 30 },
-  { id: "kid2", label: "Kid 2", kind: "line", role: "member", status: "active", msisdn: "0764567890", allocatedGb: 30 },
-  { id: "kid3", label: "Kid 3", kind: "line", role: "member", status: "active", msisdn: "0765678901", allocatedGb: 30 },
+  { id: "me", label: "Me", kind: "line", role: "owner", status: "active", msisdn: "94771234567", allocatedGb: 60 },
+  { id: "partner", label: "Partner", kind: "line", role: "member", status: "active", msisdn: "94772345678", allocatedGb: 50 },
+  { id: "kid1", label: "Kid 1", kind: "line", role: "member", status: "active", msisdn: "94763456789", allocatedGb: 30 },
+  { id: "kid2", label: "Kid 2", kind: "line", role: "member", status: "active", msisdn: "94764567890", allocatedGb: 30 },
+  { id: "kid3", label: "Kid 3", kind: "line", role: "member", status: "active", msisdn: "94765678901", allocatedGb: 30 },
 ];
 
 /** Simulated usage so far this cycle, by member id. New lines start at 0. */

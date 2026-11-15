@@ -2,9 +2,10 @@
 
 /*
  * Brand tokens. Dialog purple → magenta, with a warm accent, on a soft light surface.
- * Light is the default (matches MyDialog); dark is supported via prefers-color-scheme.
+ * Light only, to match MyDialog. (A dark theme can be added later by overriding these tokens.)
  */
 :root {
+  color-scheme: light;
   --brand-900: #2a0a44;
   --brand-700: #4b1170;
   --brand-600: #6a1b9a;
@@ -34,19 +35,6 @@
   --member-5: #e8a317;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --brand-100: #2b1840;
-    --brand-ink: #dcb0f7;
-    --background: #120c1a;
-    --surface: #1c1426;
-    --surface-muted: #261b33;
-    --foreground: #f4effa;
-    --muted: #a99fb8;
-    --border: #33263f;
-    --member-home: #b45be0;
-  }
-}
 
 @theme inline {
   --color-background: var(--background);

@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { signOut } from "@/app/actions";
 import { InviteCard } from "@/components/invite-card";
-import { repo } from "@/lib/data";
+import { getRepo } from "@/lib/data";
 import { CreateHouseholdForm } from "./create-household-form";
 
 /** Onboarding for signed-in people who aren't in a household yet. */
 export default async function WelcomePage() {
   await connection();
-  if (await repo.getHousehold()) redirect("/");
-  const invites = await repo.getInvites();
+  if (await (await getRepo()).getHousehold()) redirect("/");
+  const invites = await (await getRepo()).getInvites();
 
   return (
     <div className="pt-[max(env(safe-area-inset-top),32px)]">

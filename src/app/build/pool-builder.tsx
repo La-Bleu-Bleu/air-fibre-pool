@@ -6,7 +6,7 @@ import { savePlan, type PlanLineInput } from "@/app/actions";
 import { Badge } from "@/components/badge";
 import { StickyFooter } from "@/components/sticky-footer";
 import { formatLkr } from "@/lib/format";
-import { formatMsisdn, monthlyPrice, normaliseMsisdn } from "@/lib/pricing";
+import { formatMsisdn, monthlyPrice, normaliseMsisdn, PHONE_EXAMPLE } from "@/lib/pricing";
 import type { Catalogue } from "@/lib/types";
 
 interface DraftLine extends PlanLineInput {
@@ -257,7 +257,7 @@ function AddLineForm({
     e.preventDefault();
     const msisdn = normaliseMsisdn(number);
     if (!label.trim()) return setError("Give this line a name, like “Amma” or “Kid 4”.");
-    if (!msisdn) return setError("Enter a Dialog mobile number like 077 123 4567.");
+    if (!msisdn) return setError(`Enter a mobile number like ${PHONE_EXAMPLE}.`);
     if (existing.includes(msisdn)) return setError("That number is already in the pool.");
     onAdd(label.trim(), msisdn);
   }
@@ -281,8 +281,8 @@ function AddLineForm({
         value={number}
         onChange={(e) => setNumber(e.target.value)}
         inputMode="tel"
-        placeholder="077 123 4567"
-        aria-label="Dialog mobile number"
+        placeholder="077 123 4567 / 012-345 6789"
+        aria-label="Mobile number"
         className={field}
       />
       {error && <p className="text-sm font-medium text-danger">{error}</p>}

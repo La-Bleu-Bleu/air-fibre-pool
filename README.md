@@ -17,16 +17,20 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-### Two modes
+### Two modes, one deployment
 
-| | Demo mode | Supabase mode |
+| | Demo mode | Real mode |
 | --- | --- | --- |
-| When | No Supabase keys, or `NEXT_PUBLIC_DEMO_MODE=true` | Supabase keys set |
-| Sign-in | None. A "view as" switch on the Household tab lets you play any role | Phone number + SMS code |
-| Data | The deck's family-of-five household, saved in a cookie | Your Supabase project |
-| Extras | "Reset demo data" on Home | Owner can "Simulate a few days of usage" on Home |
+| How | **Explore the demo** on the sign-in screen | Sign in with a mobile number |
+| Sign-in | None. A "view as" switch on the Household tab lets you play any role | Any Sri Lankan (077 123 4567) or Malaysian (012-345 6789) number, code **123456** |
+| Data | The deck's family-of-five household, kept in a cookie on that device | Your Supabase project |
+| Extras | "Reset demo data" on Home; "Exit demo" on Household | Owner can "Simulate a few days of usage" on Home |
 
-Demo mode is handy for presenting; set `NEXT_PUBLIC_DEMO_MODE=true` (locally or in Vercel) to force it.
+Demo mode is also forced when Supabase isn't configured, or with `NEXT_PUBLIC_DEMO_MODE=true` (e.g. a demo-only deployment).
+
+> **⚠️ Prototype sign-in is not secure.** No SMS is sent and the code is always 123456, so anyone can sign in as any number.
+> Each number becomes an ordinary Supabase email/password account behind the scenes (`signInWithPhone` in `src/app/actions.ts`).
+> Before real users, replace it with Supabase phone OTP and an SMS provider, or Dialog's own SMS gateway via Supabase's Send SMS hook.
 
 ## Project layout
 
@@ -71,10 +75,8 @@ Security rules: members can read their own household; only the owner can change 
    ```
    No CLI? Paste `supabase/migrations/*.sql` and then `supabase/seed.sql` into the dashboard's SQL editor instead.
 3. Copy `.env.example` to `.env.local` and fill in the URL and publishable key from **Project Settings → API**.
-4. Turn on phone sign-in: **Authentication → Sign In / Providers → Phone**.
-   - Enable it and pick an SMS provider. For testing only, placeholder credentials are fine: test numbers never send an SMS.
-   - Under **Test Phone Numbers and OTPs**, add numbers in the format `94771234567=123456` (country code, no `+`), comma-separated, and set **Valid Until**.
-   - Real users need a real SMS provider (e.g. Twilio). Remove test numbers before launch.
+4. For prototype sign-in: **Authentication → Sign In / Providers → Email**: keep it enabled and switch **off "Confirm email"**.
+   (Accounts use made-up addresses, so confirmation emails would bounce.) Phone and SMS providers are not needed.
 5. **Authentication → URL Configuration:** Site URL = your Vercel URL; redirect URLs `http://localhost:3000/**` and `https://*.vercel.app/**`.
 
 New migrations: `npx supabase db push --remote` (dry run first with `--dry-run`).
@@ -96,10 +98,10 @@ Every push to `main` then deploys automatically.
 - [x] Household (owner): approve/decline data requests, remove lines, cancel invites
 - [x] Household (member): own allowance, request more data, accept/decline invite; owner-only screens are locked
 - [x] Schema: `data_requests`, `respond_to_data_request()` and `respond_to_invite()` (tested on local Postgres)
-- [x] Phone sign-in (Supabase OTP), onboarding (create a household or accept an invite), sign-out
+- [x] Prototype phone sign-in (fixed code, LK + MY numbers), "Explore the demo", onboarding (create a household or accept an invite), sign-out
 - [x] All screens read and write Supabase; demo mode kept for presenting
 - [x] Schema: `create_household()`, `save_plan()`, `save_allocations()`, `my_invites()`, `simulate_usage()`
-- [ ] Real SMS provider and production sign-in
+- [ ] Real phone OTP (SMS provider or Dialog SMS gateway) instead of the fixed 123456 code
 - [ ] Real usage feed from the network (currently simulated)
 - [ ] Sinhala and Tamil
 

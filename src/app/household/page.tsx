@@ -1,9 +1,9 @@
 import { LogOut } from "lucide-react";
-import { signOut } from "@/app/actions";
+import { exitDemo, signOut } from "@/app/actions";
 import { PageHeader } from "@/components/page-header";
-import { getHousehold } from "@/lib/data";
+import { getHousehold, isDemo } from "@/lib/data";
 import { timeAgo } from "@/lib/format";
-import { isDemoMode } from "@/lib/mode";
+import { demoForced } from "@/lib/mode";
 import { formatMsisdn } from "@/lib/pricing";
 import { MemberView } from "./member-view";
 import { OwnerView, type RequestRow } from "./owner-view";
@@ -11,6 +11,7 @@ import { ViewAs } from "./view-as";
 
 export default async function HouseholdPage() {
   const household = await getHousehold();
+  const demo = await isDemo();
   const { members, viewer, pool } = household;
   const unallocatedGb = pool.sizeGb - members.reduce((s, m) => s + m.allocatedGb, 0);
 
@@ -33,7 +34,7 @@ export default async function HouseholdPage() {
       <PageHeader eyebrow="Household" title={household.name}>
         {members.length} connections · home + {lines} {lines === 1 ? "line" : "lines"}
       </PageHeader>
-      {isDemoMode && <ViewAs people={people} current={viewer.memberId} />}
+      {demo && <ViewAs people={people} current={viewer.memberId} />}
       {viewer.isOwner ? (
         <OwnerView members={members} requests={requests} unallocatedGb={unallocatedGb} />
       ) : (
@@ -46,7 +47,21 @@ export default async function HouseholdPage() {
         />
       )}
 
-      {!isDemoMode && (
+      {demo ? (
+        !demoForced && (
+          <section className="mx-4 mt-8 flex items-center justify-between rounded-2xl bg-surface px-4 py-3">
+            <div className="text-sm">
+              <p className="font-semibold">Demo mode</p>
+              <p className="text-muted">Fake household, kept on this device only</p>
+            </div>
+            <form action={exitDemo}>
+              <button className="flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-brand-500">
+                <LogOut size={15} /> Exit demo
+              </button>
+            </form>
+          </section>
+        )
+      ) : (
         <section className="mx-4 mt-8 flex items-center justify-between rounded-2xl bg-surface px-4 py-3">
           <div className="text-sm">
             <p className="font-semibold">Signed in</p>

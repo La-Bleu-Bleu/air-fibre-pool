@@ -3,15 +3,15 @@ import { Bell, HandHeart, Plus, SlidersHorizontal, Sparkles, Zap } from "lucide-
 import { Badge } from "@/components/badge";
 import { MemberAvatar } from "@/components/member-avatar";
 import { PoolRing } from "@/components/pool-ring";
-import { getHousehold } from "@/lib/data";
+import { getHousehold, isDemo } from "@/lib/data";
 import { daysLeft, formatGb, formatLkr } from "@/lib/format";
-import { isDemoMode } from "@/lib/mode";
 import { formatMsisdn } from "@/lib/pricing";
 import { resetDemo } from "./actions";
 import { SimulateUsageButton } from "./simulate-usage-button";
 
 export default async function HomePage() {
   const household = await getHousehold();
+  const demo = await isDemo();
   const { pool, members, viewer } = household;
   const me = members.find((m) => m.id === viewer.memberId)!;
   const usedGb = members.reduce((sum, m) => sum + m.usedGb, 0);
@@ -36,7 +36,10 @@ export default async function HomePage() {
         <div className="pointer-events-none absolute -top-24 -right-20 size-64 rounded-full bg-white/10 blur-2xl" />
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/75">Good morning</p>
+            <p className="flex items-center gap-2 text-sm text-white/75">
+              Good morning
+              {demo && <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Demo</span>}
+            </p>
             <p className="text-xl font-bold">{viewer.name}</p>
           </div>
           <Link
@@ -182,7 +185,7 @@ export default async function HomePage() {
         )}
 
         {/* Prototype-only controls */}
-        {isDemoMode ? (
+        {demo ? (
           <form action={resetDemo} className="mt-8 flex justify-center">
             <button className="text-xs font-semibold text-muted underline-offset-2 hover:underline">Reset demo data</button>
           </form>

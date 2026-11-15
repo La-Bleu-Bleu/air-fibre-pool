@@ -1,56 +1,39 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { formatMsisdn, normaliseMsisdn } from "@/lib/pricing";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useTransition } from "react";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
+import { signInWithPhone } from "@/app/actions";
+import { formatMsisdn, normaliseMsisdn, PHONE_EXAMPLE } from "@/lib/pricing";
 
-const RESEND_SECONDS = 60;
-
+/**
+ * Two-step phone sign-in. PROTOTYPE: no SMS is sent and the code is always 123456
+ * (see signInWithPhone in app/actions.ts).
+ */
 export function LoginForm() {
-  const router = useRouter();
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [number, setNumber] = useState("");
-  const [msisdn, setMsisdn] = useState(""); // 94XXXXXXXXX once sent
+  const [msisdn, setMsisdn] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>();
-  const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
-
-  function sendCode(target = normaliseMsisdn(number)) {
+  function next(e: React.FormEvent) {
+    e.preventDefault();
     setError(undefined);
-    if (!target) return setError("Enter your Dialog mobile number, like 077 123 4567.");
-    startTransition(async () => {
-      const { error } = await createClient().auth.signInWithOtp({ phone: `+${target}` });
-      if (error)
-        return setError(
-          /phone provider/i.test(error.message)
-            ? "Phone sign-in isn't switched on for this project yet. (Supabase → Authentication → Sign In / Providers → Phone)"
-            : error.message,
-        );
-      setMsisdn(target);
-      setCode("");
-      setStep("code");
-      setCooldown(RESEND_SECONDS);
-    });
+    const target = normaliseMsisdn(number);
+    if (!target) return setError(`Enter your mobile number, like ${PHONE_EXAMPLE}.`);
+    setMsisdn(target);
+    setCode("");
+    setStep("code");
   }
 
   function verify(e: React.FormEvent) {
     e.preventDefault();
     setError(undefined);
-    if (!/^\d{6}$/.test(code)) return setError("Enter the 6-digit code from the SMS.");
+    if (!/^\d{6}$/.test(code)) return setError("Enter the 6-digit code.");
     startTransition(async () => {
-      const { error } = await createClient().auth.verifyOtp({ phone: `+${msisdn}`, token: code, type: "sms" });
-      if (error) return setError(error.message);
-      router.replace("/");
-      router.refresh();
+      const result = await signInWithPhone(msisdn, code);
+      if (result?.error) setError(result.error);
     });
   }
 
@@ -59,82 +42,69 @@ export function LoginForm() {
   const primary =
     "bg-brand-gradient flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white shadow-lg shadow-brand-600/30 transition active:scale-[0.99] disabled:opacity-70";
 
-  return (
-    <section className="flex-1 px-6 pt-8 pb-10">
-      {step === "phone" ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendCode();
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <h2 className="text-xl font-bold">Sign in with your mobile</h2>
-            <p className="mt-1 text-sm text-muted">We&apos;ll text you a 6-digit code.</p>
-          </div>
-          <label className="block">
-            <span className="sr-only">Dialog mobile number</span>
-            <input
-              autoFocus
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="077 123 4567"
-              className={field}
-            />
-          </label>
-          {error && <ErrorText>{error}</ErrorText>}
-          <button type="submit" disabled={pending} className={primary}>
-            {pending && <Loader2 size={18} className="animate-spin" />}
-            Send code
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="space-y-4">
-          <button
-            type="button"
-            onClick={() => {
-              setStep("phone");
-              setError(undefined);
-            }}
-            className="-ml-1 flex items-center gap-1 text-sm font-semibold text-muted hover:text-foreground"
-          >
-            <ArrowLeft size={16} /> Change number
-          </button>
-          <div>
-            <h2 className="text-xl font-bold">Enter your code</h2>
-            <p className="mt-1 text-sm text-muted">Sent to {formatMsisdn(msisdn)}</p>
-          </div>
-          <label className="block">
-            <span className="sr-only">6-digit code</span>
-            <input
-              autoFocus
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="••••••"
-              className={`${field} text-center text-2xl tracking-[0.5em]`}
-            />
-          </label>
-          {error && <ErrorText>{error}</ErrorText>}
-          <button type="submit" disabled={pending || code.length !== 6} className={primary}>
-            {pending && <Loader2 size={18} className="animate-spin" />}
-            Sign in
-          </button>
-          <button
-            type="button"
-            disabled={pending || cooldown > 0}
-            onClick={() => sendCode(msisdn)}
-            className="w-full text-center text-sm font-semibold text-brand-ink disabled:text-muted"
-          >
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
-          </button>
-        </form>
-      )}
-    </section>
+  return step === "phone" ? (
+    <form onSubmit={next} className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold">Sign in with your mobile</h2>
+        <p className="mt-1 text-sm text-muted">Sri Lankan or Malaysian numbers.</p>
+      </div>
+      <label className="block">
+        <span className="sr-only">Mobile number</span>
+        <input
+          autoFocus
+          value={number}
+          onChange={(e) => setNumber(e.target.value)}
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="077 123 4567"
+          className={field}
+        />
+      </label>
+      {error && <ErrorText>{error}</ErrorText>}
+      <button type="submit" className={primary}>
+        Send code
+      </button>
+    </form>
+  ) : (
+    <form onSubmit={verify} className="space-y-4">
+      <button
+        type="button"
+        onClick={() => {
+          setStep("phone");
+          setError(undefined);
+        }}
+        className="-ml-1 flex items-center gap-1 text-sm font-semibold text-muted hover:text-foreground"
+      >
+        <ArrowLeft size={16} /> Change number
+      </button>
+      <div>
+        <h2 className="text-xl font-bold">Enter your code</h2>
+        <p className="mt-1 text-sm text-muted">For {formatMsisdn(msisdn)}</p>
+      </div>
+      <p className="flex items-start gap-2 rounded-xl bg-brand-100 px-3 py-2.5 text-sm text-brand-ink">
+        <Info size={16} className="mt-0.5 shrink-0" aria-hidden />
+        <span>
+          Prototype: no SMS is sent. Use code <b className="tracking-wider">123456</b>.
+        </span>
+      </p>
+      <label className="block">
+        <span className="sr-only">6-digit code</span>
+        <input
+          autoFocus
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="••••••"
+          className={`${field} text-center text-2xl tracking-[0.5em]`}
+        />
+      </label>
+      {error && <ErrorText>{error}</ErrorText>}
+      <button type="submit" disabled={pending || code.length !== 6} className={primary}>
+        {pending && <Loader2 size={18} className="animate-spin" />}
+        Sign in
+      </button>
+    </form>
   );
 }
 

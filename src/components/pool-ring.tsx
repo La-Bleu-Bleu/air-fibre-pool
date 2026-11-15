@@ -14,7 +14,9 @@ export function PoolRing({ members, sizeGb, size = 168 }: { members: MemberBalan
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(255 255 255 / 0.18)" strokeWidth={stroke} />
-      {members.map((m, i) => (
+      {members.map((m, i) =>
+        // Skip anything too short to draw: a round line cap would show a stray dot.
+        lengths[i] <= gap ? null : (
           <circle
             key={m.id}
             cx={size / 2}
@@ -24,11 +26,12 @@ export function PoolRing({ members, sizeGb, size = 168 }: { members: MemberBalan
             stroke={m.color}
             strokeWidth={stroke}
             strokeLinecap="round"
-            strokeDasharray={`${Math.max(lengths[i] - gap, 0.01)} ${c}`}
+            strokeDasharray={`${lengths[i] - gap} ${c}`}
             strokeDashoffset={-offsets[i]}
             style={{ filter: "drop-shadow(0 0 1px rgb(255 255 255 / 0.9))" }}
           />
-      ))}
+        ),
+      )}
     </svg>
   );
 }

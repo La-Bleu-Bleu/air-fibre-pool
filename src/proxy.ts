@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isDemoMode } from "@/lib/mode";
+import { DEMO_COOKIE, demoForced } from "@/lib/mode";
 import { supabaseKey, supabaseUrl } from "@/lib/supabase/env";
 
 /**
@@ -9,7 +9,7 @@ import { supabaseKey, supabaseUrl } from "@/lib/supabase/env";
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (isDemoMode) return response;
+  if (demoForced || request.cookies.get(DEMO_COOKIE)?.value === "1") return response;
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {

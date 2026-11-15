@@ -74,8 +74,10 @@ Every push to `main` then deploys automatically.
 - [x] Database schema and security rules
 - [x] Build your pool: packages, slider with stops, live price, add/remove lines
 - [x] Allocate: slider + stepper per connection, stacked bar, can't exceed the pool
-- [ ] Sign-in
-- [ ] Household: invites, member view, request more data
+- [x] Household (owner): approve/decline data requests, remove lines, cancel invites
+- [x] Household (member): own allowance, request more data, accept/decline invite; owner-only screens are locked
+- [x] Schema: `data_requests`, `respond_to_data_request()` and `respond_to_invite()` (tested on local Postgres)
+- [ ] Sign-in (phone number), replacing the demo "view as" switch on the Household tab
 - [ ] Swap the demo store (`src/lib/demo-store.ts`, a cookie) for Supabase in `src/lib/data.ts` and `src/app/actions.ts`
 
 Until Supabase is connected, changes are saved in a browser cookie. "Reset demo data" at the bottom of the home screen restores the deck's family-of-five example.
@@ -86,3 +88,5 @@ Until Supabase is connected, changes are saved in a browser cookie. "Reset demo 
 - Can unallocated GB be used by anyone, or is it held back?
 - Does a smaller pool apply mid-cycle or from the next cycle? (The demo applies it immediately.)
 - What happens when a connection uses up its allocation: pause, borrow from the pool, or ask the owner?
+- Approving a request only uses unallocated GB. Should the owner be able to take it from someone else (e.g. Home) in one step?
+- Should members see each other's usage, or only their own? (Currently: everyone's usage, but only their own number.)

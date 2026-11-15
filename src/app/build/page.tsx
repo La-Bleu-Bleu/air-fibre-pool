@@ -1,9 +1,20 @@
+import { OwnerOnly } from "@/components/owner-only";
 import { PageHeader } from "@/components/page-header";
 import { getCatalogue, getHousehold } from "@/lib/data";
 import { PoolBuilder } from "./pool-builder";
 
 export default async function BuildPoolPage() {
   const [household, catalogue] = await Promise.all([getHousehold(), getCatalogue()]);
+
+  if (!household.viewer.isOwner) {
+    return (
+      <>
+        <PageHeader eyebrow="Pool" title="Household plan" />
+        <OwnerOnly ownerName={household.ownerName} what="change the pool or add lines" />
+      </>
+    );
+  }
+
   const lines = household.members
     .filter((m) => m.kind === "line")
     .sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0))

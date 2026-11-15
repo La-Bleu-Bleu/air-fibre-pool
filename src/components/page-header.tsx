@@ -7,19 +7,3 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow?: string; tit
     </header>
   );
 }
-
-export function ComingSoon({ items }: { items: string[] }) {
-  return (
-    <section className="mx-4 rounded-[var(--radius-card)] border border-dashed border-border bg-surface p-5">
-      <p className="text-sm font-bold">Planned for this screen</p>
-      <ul className="mt-3 space-y-2 text-sm text-muted">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-500" />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}

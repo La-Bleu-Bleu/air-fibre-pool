@@ -1,4 +1,4 @@
-import type { Catalogue, HouseholdSummary, Member } from "./types";
+import type { Catalogue, DataRequest, HouseholdSummary, Member } from "./types";
 
 /**
  * Demo data used until Supabase is connected (and for presenting).
@@ -42,7 +42,19 @@ export const demoUsageGb: Record<string, number> = {
   kid3: 14.0,
 };
 
-export const demoHouseholdMeta: Omit<HouseholdSummary, "members" | "pool"> & {
+/** One pending request so the owner's Household tab has something to act on. */
+export const demoRequests: DataRequest[] = [
+  {
+    id: "req-demo-1",
+    memberId: "kid1",
+    gb: 10,
+    note: "Exam revision videos this week 🙏",
+    status: "pending",
+    createdAt: "2026-11-15T18:30:00+05:30",
+  },
+];
+
+export const demoHouseholdMeta: Pick<HouseholdSummary, "id" | "name" | "ownerName"> & {
   cycleStart: string;
   cycleEnd: string;
 } = {

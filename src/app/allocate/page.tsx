@@ -1,9 +1,19 @@
+import { OwnerOnly } from "@/components/owner-only";
 import { PageHeader } from "@/components/page-header";
 import { getHousehold } from "@/lib/data";
 import { Allocator } from "./allocator";
 
 export default async function AllocatePage() {
   const household = await getHousehold();
+
+  if (!household.viewer.isOwner) {
+    return (
+      <>
+        <PageHeader eyebrow="Allocate" title="Who gets what" />
+        <OwnerOnly ownerName={household.ownerName} what="change allocations" />
+      </>
+    );
+  }
 
   return (
     <div className="pb-56">

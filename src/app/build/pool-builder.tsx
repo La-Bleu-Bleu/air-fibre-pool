@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, Loader2, Plus, Router, Smartphone, X } from "lucide-react";
 import { savePlan, type PlanLineInput } from "@/app/actions";
+import { Badge } from "@/components/badge";
 import { StickyFooter } from "@/components/sticky-footer";
 import { formatLkr } from "@/lib/format";
 import { formatMsisdn, monthlyPrice, normaliseMsisdn } from "@/lib/pricing";
@@ -161,8 +162,8 @@ export function PoolBuilder({ catalogue, initialPoolGb, initialLines }: Props) {
                 <p className="flex items-center gap-2 font-semibold">
                   <span className="truncate">{line.label}</span>
                   {line.isOwner && <Badge>Owner</Badge>}
-                  {!line.id && <Badge tone="new">New</Badge>}
-                  {line.id && line.invited && <Badge tone="new">Invited</Badge>}
+                  {!line.id && <Badge tone="accent">New</Badge>}
+                  {line.id && line.invited && <Badge tone="accent">Invited</Badge>}
                 </p>
                 <p className="text-xs text-muted">{line.msisdn ? formatMsisdn(line.msisdn) : ""}</p>
               </div>
@@ -236,18 +237,6 @@ export function PoolBuilder({ catalogue, initialPoolGb, initialLines }: Props) {
         </div>
       </StickyFooter>
     </div>
-  );
-}
-
-function Badge({ children, tone = "brand" }: { children: React.ReactNode; tone?: "brand" | "new" }) {
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-        tone === "brand" ? "bg-brand-100 text-brand-ink" : "bg-accent-500/15 text-accent-500"
-      }`}
-    >
-      {children}
-    </span>
   );
 }
 

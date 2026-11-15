@@ -3,6 +3,7 @@ import path from "node:path";
 import { redirect } from "next/navigation";
 import { PlayCircle, Wifi } from "lucide-react";
 import { enterDemo } from "@/app/actions";
+import { DemoResetButton } from "@/components/demo-reset-button";
 import { demoForced } from "@/lib/mode";
 import { LoginForm } from "./login-form";
 
@@ -53,10 +54,10 @@ export default function LoginPage() {
         </div>
 
         <form action={enterDemo}>
-          <button className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface font-bold transition hover:border-brand-500">
+          <DemoResetButton className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface font-bold transition hover:border-brand-500">
             <PlayCircle size={18} className="text-brand-ink" />
             Explore the demo
-          </button>
+          </DemoResetButton>
         </form>
         <p className="mt-2 text-center text-xs text-muted">A sample family of five. No sign-in needed.</p>
       </div>

@@ -140,7 +140,7 @@ export function DiaChat({
             <p className="mx-5 -mt-2 mb-4 text-xs text-muted">Demo: Dia follows a script here and understands a few common requests.</p>
           )}
           <div className="mx-4 flex flex-wrap gap-2">
-            {suggestions.map((s) => (
+            {suggestions.slice(0, 4).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -216,6 +216,27 @@ export function DiaChat({
               </li>
             ),
           )}
+          {/* Follow-ups: the suggestions not asked yet, once Dia has answered */}
+          {!streaming && items.at(-1)?.role !== "user" && (
+            <li className="pt-1">
+              {followUps(items, suggestions).length > 0 ? (
+                <div className="flex flex-wrap gap-2 pl-10">
+                  {followUps(items, suggestions).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => send(s)}
+                      className="rounded-full border border-border bg-surface px-3 py-1.5 text-[13px] font-medium transition hover:border-brand-500"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                demo && <p className="pl-10 text-xs text-muted">You&apos;ve tried every suggestion. Tap Reset chat to start over.</p>
+              )}
+            </li>
+          )}
           <div ref={bottomRef} />
         </ol>
         </>
@@ -269,6 +290,12 @@ async function apply(p: DiaProposal) {
     case "data_request":
       return requestData(p.gb, p.note);
   }
+}
+
+/** Up to four suggestions the person hasn't asked yet, in their listed order. */
+function followUps(items: ChatItem[], suggestions: string[]) {
+  const asked = new Set(items.filter((i) => i.role === "user").map((i) => i.text.trim().toLowerCase()));
+  return suggestions.filter((s) => !asked.has(s.toLowerCase())).slice(0, 4);
 }
 
 /** What goes back to the API: plain text turns, with card outcomes as short user notes. */

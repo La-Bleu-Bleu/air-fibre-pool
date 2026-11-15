@@ -12,21 +12,33 @@ export default async function DiaPage() {
   );
   const someone = firstLowMember ?? household.members.find((m) => m.kind === "line" && m.role !== "owner");
 
+  // The first four show on an empty chat; after each answer, the ones not yet asked show as follow-ups.
   const suggestions = viewer.isOwner
     ? [
         "Who's running low on data?",
         someone ? `Give ${someone.displayLabel} 10 GB more` : "How much data is unallocated?",
         "What would 500 GB cost?",
         "Approve the request",
+        "How much data is left?",
+        someone ? `How much does ${someone.displayLabel} have left?` : "Explain my plan",
+        "When does the pool renew?",
+        "Explain my plan",
+        "Switch to 200 GB",
       ]
-    : ["How much data do I have left?", "Ask for 10 GB more", "When does the pool renew?"];
+    : [
+        "How much data do I have left?",
+        "Ask for 10 GB more",
+        "When does the pool renew?",
+        "Am I running low?",
+        "Explain my plan",
+      ];
 
   return (
     <DiaChat
       key={viewer.memberId} // a fresh conversation per person (matters when switching in the demo)
       storageKey={`dia:${household.id}:${viewer.memberId}`}
       viewerName={viewer.name}
-      suggestions={suggestions}
+      suggestions={[...new Set(suggestions)]}
       configured={demo || Boolean(process.env.ANTHROPIC_API_KEY)}
       demo={demo}
     />

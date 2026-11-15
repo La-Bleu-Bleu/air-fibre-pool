@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bell, HandHeart, Plus, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
 import { Badge } from "@/components/badge";
+import { DemoResetButton } from "@/components/demo-reset-button";
 import { MemberAvatar } from "@/components/member-avatar";
 import { PoolRing } from "@/components/pool-ring";
 import { getHousehold, isDemo } from "@/lib/data";
@@ -185,7 +186,7 @@ export default async function HomePage() {
         {/* Prototype-only controls */}
         {demo ? (
           <form action={resetDemo} className="mt-8 flex justify-center">
-            <button className="text-xs font-semibold text-muted underline-offset-2 hover:underline">Reset demo data</button>
+            <DemoResetButton className="text-xs font-semibold text-muted underline-offset-2 hover:underline">Reset demo data</DemoResetButton>
           </form>
         ) : (
           viewer.isOwner && <SimulateUsageButton />

@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { exitDemo, signOut } from "@/app/actions";
+import { DemoResetButton } from "@/components/demo-reset-button";
 import { PageHeader } from "@/components/page-header";
 import { getHousehold, isDemo } from "@/lib/data";
 import { timeAgo } from "@/lib/format";
@@ -50,9 +51,9 @@ export default async function HouseholdPage() {
               <p className="text-muted">Fake household, kept on this device only</p>
             </div>
             <form action={exitDemo}>
-              <button className="flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-brand-500">
+              <DemoResetButton className="flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-brand-500">
                 <LogOut size={15} /> Exit demo
-              </button>
+              </DemoResetButton>
             </form>
           </section>
         )

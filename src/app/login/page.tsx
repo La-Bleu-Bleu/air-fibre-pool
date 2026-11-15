@@ -18,7 +18,7 @@ function BrandMark() {
   if (logoFile)
     return (
       // eslint-disable-next-line @next/next/no-img-element -- static brand asset, any format
-      <img src={`/brand/${logoFile}`} alt="Dialog" className="h-14 w-auto rounded-2xl bg-white p-2" />
+      <img src={`/brand/${logoFile}`} alt="Dialog" className="h-14 w-auto" />
     );
   return (
     <span className="grid size-14 place-items-center rounded-2xl bg-white/20 backdrop-blur">

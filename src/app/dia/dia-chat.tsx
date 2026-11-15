@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowUp, Check, Loader2, Sparkles, X } from "lucide-react";
+import { ArrowUp, Check, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { requestData, respondToRequest, saveAllocations, savePlan } from "@/app/actions";
 import type { DiaEvent, DiaProposal, DiaTurn } from "@/lib/dia/types";
 
@@ -153,6 +153,21 @@ export function DiaChat({
           </div>
         </>
       ) : (
+        <>
+          {demo && (
+            // Demo only: start over to try the other suggestions (like "Reset demo data" on Home)
+            <div className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),12px)] pb-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Demo chat</span>
+              <button
+                type="button"
+                onClick={() => setItems([])}
+                disabled={streaming}
+                className="flex h-8 items-center gap-1.5 rounded-full border border-border bg-surface px-3 text-xs font-semibold transition hover:border-brand-500 disabled:opacity-50"
+              >
+                <RotateCcw size={13} /> Reset chat
+              </button>
+            </div>
+          )}
         <ol className="space-y-3 px-4 pt-2" aria-live="polite">
           {items.map((item) =>
             item.role === "note" ? (
@@ -203,6 +218,7 @@ export function DiaChat({
           )}
           <div ref={bottomRef} />
         </ol>
+        </>
       )}
 
       <form

@@ -3,12 +3,15 @@ import { Bell, Plus, Router, SlidersHorizontal, Smartphone, Zap } from "lucide-r
 import { PoolRing } from "@/components/pool-ring";
 import { getHousehold } from "@/lib/data";
 import { daysLeft, formatGb, formatLkr } from "@/lib/format";
+import { formatMsisdn } from "@/lib/pricing";
+import { resetDemo } from "./actions";
 
 export default async function HomePage() {
   const household = await getHousehold();
   const { pool, members } = household;
   const usedGb = members.reduce((sum, m) => sum + m.usedGb, 0);
-  const remainingGb = pool.sizeGb - usedGb;
+  const remainingGb = Math.max(0, pool.sizeGb - usedGb);
+  const unallocatedGb = pool.sizeGb - members.reduce((sum, m) => sum + m.allocatedGb, 0);
 
   return (
     <>
@@ -50,7 +53,7 @@ export default async function HomePage() {
           {[
             { href: "/build", label: "Top up", icon: Zap },
             { href: "/allocate", label: "Allocate", icon: SlidersHorizontal },
-            { href: "/household", label: "Add line", icon: Plus },
+            { href: "/build", label: "Add line", icon: Plus },
           ].map(({ href, label, icon: Icon }) => (
             <Link
               key={label}
@@ -73,8 +76,9 @@ export default async function HomePage() {
 
         <ul className="space-y-2.5">
           {members.map((m) => {
-            const pct = Math.min(100, (m.usedGb / m.allocatedGb) * 100);
-            const low = pct >= 80;
+            const pct = m.allocatedGb > 0 ? Math.min(100, (m.usedGb / m.allocatedGb) * 100) : 0;
+            const invited = m.status === "invited";
+            const low = !invited && m.allocatedGb > 0 && pct >= 80;
             const Icon = m.kind === "home" ? Router : Smartphone;
             return (
               <li key={m.id} className="rounded-[var(--radius-card)] border border-border bg-surface p-4">
@@ -93,8 +97,15 @@ export default async function HomePage() {
                           Owner
                         </span>
                       )}
+                      {invited && (
+                        <span className="rounded-full bg-accent-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-500">
+                          Invited
+                        </span>
+                      )}
                     </p>
-                    <p className="truncate text-xs text-muted">{m.msisdn}</p>
+                    <p className="truncate text-xs text-muted">
+                      {m.kind === "home" ? "Air Fibre router" : m.msisdn ? formatMsisdn(m.msisdn) : ""}
+                    </p>
                   </div>
                   <p className="text-right text-sm">
                     <span className="font-bold">{formatGb(m.usedGb)}</span>
@@ -107,11 +118,33 @@ export default async function HomePage() {
                     style={{ width: `${pct}%`, background: low ? "var(--danger)" : m.color }}
                   />
                 </div>
-                {low && <p className="mt-2 text-xs font-semibold text-danger">Running low: {formatGb(m.allocatedGb - m.usedGb)} left</p>}
+                {low && (
+                  <p className="mt-2 text-xs font-semibold text-danger">
+                    {m.usedGb >= m.allocatedGb ? "Allocation used up" : `Running low: ${formatGb(m.allocatedGb - m.usedGb)} left`}
+                  </p>
+                )}
+                {!invited && m.allocatedGb === 0 && (
+                  <p className="mt-2 text-xs font-semibold text-muted">No data allocated yet</p>
+                )}
+                {invited && <p className="mt-2 text-xs font-semibold text-muted">Waiting for them to accept the invite</p>}
               </li>
             );
           })}
         </ul>
+
+        {unallocatedGb > 0 && (
+          <p className="mt-3 px-1 text-sm text-muted">
+            <span className="font-bold text-foreground">{formatGb(unallocatedGb)}</span> unallocated.{" "}
+            <Link href="/allocate" className="font-semibold text-brand-ink">
+              Allocate it
+            </Link>
+          </p>
+        )}
+
+        {/* Demo-only control; remove once real data is connected */}
+        <form action={resetDemo} className="mt-8 flex justify-center">
+          <button className="text-xs font-semibold text-muted underline-offset-2 hover:underline">Reset demo data</button>
+        </form>
       </section>
     </>
   );

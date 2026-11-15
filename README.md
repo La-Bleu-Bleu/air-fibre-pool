@@ -72,8 +72,17 @@ Every push to `main` then deploys automatically.
 
 - [x] Scaffold, brand theme, app shell, home screen on demo data
 - [x] Database schema and security rules
+- [x] Build your pool: packages, slider with stops, live price, add/remove lines
+- [x] Allocate: slider + stepper per connection, stacked bar, can't exceed the pool
 - [ ] Sign-in
-- [ ] Build your pool (slider + live price + packages)
-- [ ] Allocate
 - [ ] Household: invites, member view, request more data
-- [ ] Swap demo data for Supabase queries in `src/lib/data.ts`
+- [ ] Swap the demo store (`src/lib/demo-store.ts`, a cookie) for Supabase in `src/lib/data.ts` and `src/app/actions.ts`
+
+Until Supabase is connected, changes are saved in a browser cookie. "Reset demo data" at the bottom of the home screen restores the deck's family-of-five example.
+
+### Open questions (placeholders used for now)
+
+- Pricing: pool tiers and the LKR 290 per-line add-on are made up.
+- Can unallocated GB be used by anyone, or is it held back?
+- Does a smaller pool apply mid-cycle or from the next cycle? (The demo applies it immediately.)
+- What happens when a connection uses up its allocation: pause, borrow from the pool, or ask the owner?

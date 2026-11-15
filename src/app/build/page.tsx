@@ -1,19 +1,20 @@
-import { ComingSoon, PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
+import { getCatalogue, getHousehold } from "@/lib/data";
+import { PoolBuilder } from "./pool-builder";
 
-export default function BuildPoolPage() {
+export default async function BuildPoolPage() {
+  const [household, catalogue] = await Promise.all([getHousehold(), getCatalogue()]);
+  const lines = household.members
+    .filter((m) => m.kind === "line")
+    .sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0))
+    .map(({ id, label, msisdn, role, status }) => ({ id, label, msisdn: msisdn ?? "", isOwner: role === "owner", invited: status === "invited" }));
+
   return (
-    <>
-      <PageHeader eyebrow="Step 1" title="Build your pool">
-        Pick one monthly data pool for your whole home.
+    <div className="pb-56">
+      <PageHeader eyebrow="Step 1 of 2" title="Build your pool">
+        One monthly data pool for your home and everyone on it.
       </PageHeader>
-      <ComingSoon
-        items={[
-          "Slider with stops at 10, 20, 50, 100, 200 and 500 GB",
-          "Live price that updates as you slide",
-          "Add a line: bring another Dialog mobile number into the pool",
-          "Preset packages (Solo, Couple, Family) as a starting point",
-        ]}
-      />
-    </>
+      <PoolBuilder catalogue={catalogue} initialPoolGb={household.pool.sizeGb} initialLines={lines} />
+    </div>
   );
 }

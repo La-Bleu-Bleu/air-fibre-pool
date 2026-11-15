@@ -1,19 +1,16 @@
-import { ComingSoon, PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
+import { getHousehold } from "@/lib/data";
+import { Allocator } from "./allocator";
 
-export default function AllocatePage() {
+export default async function AllocatePage() {
+  const household = await getHousehold();
+
   return (
-    <>
-      <PageHeader eyebrow="Step 2" title="Allocate">
-        Decide how much of the pool each connection gets.
+    <div className="pb-56">
+      <PageHeader eyebrow="Step 2 of 2" title="Allocate">
+        Decide how much of the {household.pool.sizeGb} GB pool each connection gets.
       </PageHeader>
-      <ComingSoon
-        items={[
-          "A slider per connection: Home, Me, Partner, Kids",
-          "Running total that always adds up to the pool",
-          "Stacked bar showing everyone's share",
-          "Only the owner can change allocations",
-        ]}
-      />
-    </>
+      <Allocator poolGb={household.pool.sizeGb} members={household.members} />
+    </div>
   );
 }

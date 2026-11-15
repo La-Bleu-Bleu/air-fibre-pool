@@ -1,15 +1,22 @@
 export type MemberKind = "home" | "line";
 export type MemberRole = "owner" | "member";
+export type MemberStatus = "active" | "invited";
 
-export interface MemberBalance {
+/** A connection in the household as stored (no derived fields). */
+export interface Member {
   id: string;
   label: string;
   kind: MemberKind;
   role: MemberRole;
+  status: MemberStatus;
   msisdn: string | null;
   allocatedGb: number;
+}
+
+/** A member plus this cycle's usage and display colour. */
+export interface MemberBalance extends Member {
   usedGb: number;
-  color: string; // CSS colour token
+  color: string; // CSS colour value
 }
 
 export interface HouseholdSummary {
@@ -35,4 +42,11 @@ export interface PackagePreset {
   name: string;
   poolGb: number;
   lines: number;
+}
+
+export interface Catalogue {
+  tiers: PriceTier[];
+  packages: PackagePreset[];
+  extraLinePriceLkr: number;
+  maxLines: number;
 }

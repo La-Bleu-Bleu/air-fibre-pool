@@ -6,7 +6,9 @@ export function PoolRing({ members, sizeGb, size = 168 }: { members: MemberBalan
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const gap = 4; // px gap between segments
-  const lengths = members.map((m) => (m.usedGb / sizeGb) * c);
+  // If usage ever exceeds the pool (e.g. demo usage after a downgrade), fill the ring instead of overflowing.
+  const scale = Math.max(sizeGb, members.reduce((s, m) => s + m.usedGb, 0));
+  const lengths = members.map((m) => (m.usedGb / scale) * c);
   const offsets = lengths.map((_, i) => lengths.slice(0, i).reduce((a, b) => a + b, 0));
 
   return (

@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
+/*
+ * Brand tokens. Dialog purple → magenta, with a warm accent, on a soft light surface.
+ * Light is the default (matches MyDialog); dark is supported via prefers-color-scheme.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-900: #2a0a44;
+  --brand-700: #4b1170;
+  --brand-600: #6a1b9a;
+  --brand-500: #8e2bb5;
+  --brand-100: #f3e8fb;
+  --brand-ink: #6a1b9a; /* brand-coloured text on surfaces */
+  --magenta-500: #d6246e;
+  --accent-500: #f26b21;
+
+  --background: #f6f4fa;
+  --surface: #ffffff;
+  --surface-muted: #efeaf5;
+  --foreground: #1c1426;
+  --muted: #6f6680;
+  --border: #e6e0ee;
+
+  --success: #12a46b;
+  --warning: #e8a317;
+  --danger: #e0393e;
+
+  /* Member colours for allocation bars / rings */
+  --member-home: #6a1b9a;
+  --member-1: #d6246e;
+  --member-2: #f26b21;
+  --member-3: #2a8cf0;
+  --member-4: #12a46b;
+  --member-5: #e8a317;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-100: #2b1840;
+    --brand-ink: #dcb0f7;
+    --background: #120c1a;
+    --surface: #1c1426;
+    --surface-muted: #261b33;
+    --foreground: #f4effa;
+    --muted: #a99fb8;
+    --border: #33263f;
+    --member-home: #b45be0;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-brand-900: var(--brand-900);
+  --color-brand-700: var(--brand-700);
+  --color-brand-600: var(--brand-600);
+  --color-brand-500: var(--brand-500);
+  --color-brand-100: var(--brand-100);
+  --color-brand-ink: var(--brand-ink);
+  --color-magenta-500: var(--magenta-500);
+  --color-accent-500: var(--accent-500);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-jakarta), var(--font-sinhala), var(--font-tamil), system-ui, sans-serif;
+  --radius-card: 1.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@utility bg-brand-gradient {
+  background-image: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 45%, var(--magenta-500) 100%);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }

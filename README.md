@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Air Fibre Household
 
-## Getting Started
+Concept app for **Dialog Air Fibre household data pools**: one shared monthly 5G data pool for the Air Fibre home router and the family's Dialog mobile lines. The account owner builds the pool and decides how much each connection gets.
 
-First, run the development server:
+It's a mobile app at heart, built as a mobile-first web app for now.
+
+- **Frontend:** Next.js 16 (App Router, TypeScript), Tailwind CSS 4, lucide icons, Plus Jakarta Sans
+- **Backend:** Supabase (Postgres, Auth, row-level security)
+- **Hosting:** Vercel
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. Without Supabase keys the app runs on **demo data**: the "family of five" household from the proposition deck.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+  app/                 Routes: / (home), /build, /allocate, /household
+  components/          UI pieces (bottom nav, pool ring, headers)
+  lib/
+    data.ts            Data access layer. Pages only call this (demo data for now)
+    demo-data.ts       Demo household, price tiers, packages
+    supabase/          Browser + server Supabase clients
+  proxy.ts             Refreshes the Supabase session on each request
+supabase/
+  migrations/          Database schema + security rules
+  seed.sql             Price tiers and packages (PLACEHOLDER prices)
+```
 
-## Learn More
+## Data model
 
-To learn more about Next.js, take a look at the following resources:
+| Table | What it holds |
+| --- | --- |
+| `profiles` | One per signed-up user (created automatically) |
+| `households` | A home, owned by one profile |
+| `household_members` | The router (`kind = home`) and each mobile line (`kind = line`), with role owner/member |
+| `pools` | The data pool bought for a billing cycle (one active per household) |
+| `allocations` | GB per member per pool. **The database rejects totals above the pool size** |
+| `usage_events` | Simulated usage (there is no live network feed in this prototype) |
+| `price_tiers`, `packages`, `settings` | Catalogue: slider stops, presets, extra-line price |
+| `member_balances` (view) | Allocated vs used per member for the active pool |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Security rules: members can read their own household; only the owner can change members, pools and allocations. Everyone can read the catalogue.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Connecting Supabase
 
-## Deploy on Vercel
+1. Create a project at <https://supabase.com/dashboard>.
+2. Link it and push the schema (the Supabase CLI is installed as a dev dependency):
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push --include-seed
+   ```
+   No CLI? Paste `supabase/migrations/*.sql` and then `supabase/seed.sql` into the dashboard's SQL editor instead.
+3. Copy `.env.example` to `.env.local` and fill in the URL and publishable key from **Project Settings → API**.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploying to Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push this repo to GitHub.
+2. In Vercel, **Add New → Project**, import the repo (framework is detected automatically).
+3. Add the two `NEXT_PUBLIC_SUPABASE_*` environment variables, then deploy.
+
+Every push to `main` then deploys automatically.
+
+## Status
+
+- [x] Scaffold, brand theme, app shell, home screen on demo data
+- [x] Database schema and security rules
+- [ ] Sign-in
+- [ ] Build your pool (slider + live price + packages)
+- [ ] Allocate
+- [ ] Household: invites, member view, request more data
+- [ ] Swap demo data for Supabase queries in `src/lib/data.ts`

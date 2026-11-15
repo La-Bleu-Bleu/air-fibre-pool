@@ -1,69 +1,118 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Bell, Plus, Router, SlidersHorizontal, Smartphone, Zap } from "lucide-react";
+import { PoolRing } from "@/components/pool-ring";
+import { getHousehold } from "@/lib/data";
+import { daysLeft, formatGb, formatLkr } from "@/lib/format";
 
-export default function Home() {
+export default async function HomePage() {
+  const household = await getHousehold();
+  const { pool, members } = household;
+  const usedGb = members.reduce((sum, m) => sum + m.usedGb, 0);
+  const remainingGb = pool.sizeGb - usedGb;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      {/* Hero: brand gradient with the pool ring */}
+      <section className="bg-brand-gradient relative overflow-hidden rounded-b-[2rem] px-5 pt-[max(env(safe-area-inset-top),20px)] pb-7 text-white">
+        <div className="pointer-events-none absolute -top-24 -right-20 size-64 rounded-full bg-white/10 blur-2xl" />
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white/75">Good morning</p>
+            <p className="text-xl font-bold">{household.ownerName}</p>
+          </div>
+          <button aria-label="Notifications" className="grid size-10 place-items-center rounded-full bg-white/15 backdrop-blur">
+            <Bell size={18} />
+          </button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="mt-6 flex items-center gap-5">
+          <div className="relative shrink-0">
+            <PoolRing members={members} sizeGb={pool.sizeGb} />
+            <div className="absolute inset-0 grid place-items-center text-center">
+              <div>
+                <p className="text-[32px] font-extrabold leading-none">{Math.round(remainingGb)}</p>
+                <p className="mt-1 text-xs text-white/75">of {pool.sizeGb} GB left</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">Household pool</p>
+            <p className="text-lg font-bold leading-snug">{household.name}</p>
+            <p className="text-sm text-white/80">
+              Renews in {daysLeft(pool.cycleEnd)} days
+              <br />
+              {formatLkr(pool.priceLkr)}/month
+            </p>
+          </div>
         </div>
-      </main>
-    </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-2">
+          {[
+            { href: "/build", label: "Top up", icon: Zap },
+            { href: "/allocate", label: "Allocate", icon: SlidersHorizontal },
+            { href: "/household", label: "Add line", icon: Plus },
+          ].map(({ href, label, icon: Icon }) => (
+            <Link
+              key={label}
+              href={href}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-xs font-semibold backdrop-blur transition hover:bg-white/25"
+            >
+              <Icon size={18} />
+              {label}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Members */}
+      <section className="px-4 pt-6">
+        <div className="mb-3 flex items-baseline justify-between px-1">
+          <h2 className="text-lg font-bold">Who&apos;s using what</h2>
+          <span className="text-sm text-muted">{members.length} connections</span>
+        </div>
+
+        <ul className="space-y-2.5">
+          {members.map((m) => {
+            const pct = Math.min(100, (m.usedGb / m.allocatedGb) * 100);
+            const low = pct >= 80;
+            const Icon = m.kind === "home" ? Router : Smartphone;
+            return (
+              <li key={m.id} className="rounded-[var(--radius-card)] border border-border bg-surface p-4">
+                <div className="flex items-center gap-3">
+                  <span
+                    className="grid size-10 shrink-0 place-items-center rounded-2xl text-white"
+                    style={{ background: m.color }}
+                  >
+                    <Icon size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 font-semibold">
+                      {m.label}
+                      {m.role === "owner" && (
+                        <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-ink">
+                          Owner
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-muted">{m.msisdn}</p>
+                  </div>
+                  <p className="text-right text-sm">
+                    <span className="font-bold">{formatGb(m.usedGb)}</span>
+                    <span className="text-muted"> / {formatGb(m.allocatedGb)}</span>
+                  </p>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${pct}%`, background: low ? "var(--danger)" : m.color }}
+                  />
+                </div>
+                {low && <p className="mt-2 text-xs font-semibold text-danger">Running low: {formatGb(m.allocatedGb - m.usedGb)} left</p>}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </>
   );
 }

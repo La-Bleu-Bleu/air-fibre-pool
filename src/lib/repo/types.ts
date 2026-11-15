@@ -24,6 +24,8 @@ export interface Repo {
   getHousehold(): Promise<HouseholdSummary | null>;
   getInvites(): Promise<Invite[]>;
   getCatalogue(): Promise<Catalogue>;
+  /** The signed-in person's own phone number (947… / 601…), if known. */
+  getMyPhone(): Promise<string | null>;
 
   createHousehold(name: string, displayName: string): Promise<void>;
   savePlan(poolGb: number, lines: PlanLine[]): Promise<void>;

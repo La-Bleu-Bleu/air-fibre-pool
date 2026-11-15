@@ -21,9 +21,9 @@ export default async function HomePage() {
 
   const actions = viewer.isOwner
     ? [
-        { href: "/build", label: "Top up", icon: Zap },
+        { href: "/build?edit=1", label: "Top up", icon: Zap },
         { href: "/allocate", label: "Allocate", icon: SlidersHorizontal },
-        { href: "/build", label: "Add line", icon: Plus },
+        { href: "/build?edit=1", label: "Add line", icon: Plus },
       ]
     : me.status === "active"
       ? [{ href: "/household", label: "Ask for more data", icon: HandHeart }]
@@ -36,10 +36,7 @@ export default async function HomePage() {
         <div className="pointer-events-none absolute -top-24 -right-20 size-64 rounded-full bg-white/10 blur-2xl" />
         <div className="flex items-center justify-between">
           <div>
-            <p className="flex items-center gap-2 text-sm text-white/75">
-              Good morning
-              {demo && <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Demo</span>}
-            </p>
+            <p className="text-sm text-white/75">Good morning</p>
             <p className="text-xl font-bold">{viewer.name}</p>
           </div>
           <Link
@@ -138,8 +135,8 @@ export default async function HomePage() {
                 <div className="flex items-center gap-3">
                   <MemberAvatar kind={m.kind} color={m.color} />
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 font-semibold">
-                      <span className="truncate">{m.displayLabel}</span>
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-semibold">
+                      <span>{m.displayLabel}</span>
                       {m.role === "owner" && <Badge>Owner</Badge>}
                       {invited && <Badge tone="accent">Invited</Badge>}
                     </p>

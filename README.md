@@ -36,7 +36,7 @@ Demo mode is also forced when Supabase isn't configured, or with `NEXT_PUBLIC_DE
 
 ```
 src/
-  app/                 Routes: / (home), /build, /allocate, /household, /login, /welcome
+  app/                 Routes: / (home), /build (Pool tab), /allocate, /household, /login, /welcome
   components/          UI pieces (bottom nav, pool ring, headers)
   lib/
     data.ts            Data access layer: picks the demo or Supabase repo
@@ -86,6 +86,8 @@ New migrations: `npx supabase db push --remote` (dry run first with `--dry-run`)
 1. Push this repo to GitHub.
 2. In Vercel, **Add New → Project**, import the repo (framework is detected automatically).
 3. Add the two `NEXT_PUBLIC_SUPABASE_*` environment variables, then deploy.
+4. **Settings → Functions → Region:** pick the region of your Supabase project (this one is in Tokyo, so `hnd1`).
+   Every page talks to the database, so keeping them together is the biggest speed win.
 
 Every push to `main` then deploys automatically.
 
@@ -101,6 +103,10 @@ Every push to `main` then deploys automatically.
 - [x] Prototype phone sign-in (fixed code, LK + MY numbers), "Explore the demo", onboarding (create a household or accept an invite), sign-out
 - [x] All screens read and write Supabase; demo mode kept for presenting
 - [x] Schema: `create_household()`, `save_plan()`, `save_allocations()`, `my_invites()`, `simulate_usage()`
+- [x] One database round trip per page (`my_household()`), cached price list, instant tab feedback
+- [x] Pool tab shows your current plan; changing it shows before → after. Setup flow only on first run
+- [x] Demo "view as" bar on every screen; members only see the Home and Household tabs
+- [x] Welcome screen: accept an invite, or choose between joining a family's household and starting one
 - [ ] Real phone OTP (SMS provider or Dialog SMS gateway) instead of the fixed 123456 code
 - [ ] Real usage feed from the network (currently simulated)
 - [ ] Sinhala and Tamil

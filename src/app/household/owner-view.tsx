@@ -52,7 +52,7 @@ export function OwnerView({
           ))}
           <li>
             <Link
-              href="/build"
+              href="/build?edit=1"
               className="flex items-center gap-3 p-4 font-semibold text-brand-ink transition hover:bg-brand-100"
             >
               <span className="grid size-10 place-items-center rounded-2xl border-2 border-dashed border-current">

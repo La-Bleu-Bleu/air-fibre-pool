@@ -51,7 +51,7 @@ export async function createHousehold(name: string, displayName: string): Promis
     await (await getRepo()).createHousehold(name.trim().slice(0, 40), displayName.trim().slice(0, 40));
   });
   if (result) return result;
-  redirect("/build");
+  redirect("/build?setup=1");
 }
 
 // ─── Owner: plan and allocations ─────────────────────────────────────────────
@@ -62,8 +62,11 @@ export interface PlanLineInput {
   msisdn: string;
 }
 
-/** Save the pool size and lines (step 1), then go to Allocate. */
-export async function savePlan(poolGb: number, lines: PlanLineInput[]): Promise<ActionResult> {
+/**
+ * Save the pool size and lines. During first-time setup ("allocate") go on to Allocate;
+ * when changing an existing plan ("stay"), stay on the Pool page, which refreshes to show it.
+ */
+export async function savePlan(poolGb: number, lines: PlanLineInput[], then: "allocate" | "stay"): Promise<ActionResult> {
   const result = await attempt(async () => {
     const h = await asOwner();
     const catalogue = await (await getRepo()).getCatalogue();
@@ -93,8 +96,8 @@ export async function savePlan(poolGb: number, lines: PlanLineInput[]): Promise<
 
     await (await getRepo()).savePlan(poolGb, clean);
   });
-  if (result) return result;
-  redirect("/allocate");
+  if (result || then === "stay") return result;
+  redirect("/allocate?setup=1");
 }
 
 /** Save GB per member (step 2). The total may not exceed the pool. */

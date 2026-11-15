@@ -34,6 +34,10 @@ export const demoRepo: Repo = {
     return demoCatalogue;
   },
 
+  async getMyPhone() {
+    return null;
+  },
+
   async createHousehold() {
     throw new UserError("The demo already has a household. Use “Reset demo data” to start over.");
   },

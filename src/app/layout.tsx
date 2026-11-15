@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Sinhala, Noto_Sans_Tamil, Plus_Jakarta_Sans } from "next/font/google";
-import { BottomNav } from "@/components/bottom-nav";
+import { Suspense } from "react";
+import { ViewerBar, ViewerNav } from "@/components/app-chrome";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"] });
@@ -29,8 +30,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full font-sans">
         {/* Phone-width column: the product is a mobile app, shown as a web app for now. */}
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col bg-background sm:shadow-[0_0_0_1px_var(--border)]">
+          <Suspense fallback={null}>
+            <ViewerBar />
+          </Suspense>
           <main className="flex-1 pb-28">{children}</main>
-          <BottomNav />
+          <Suspense fallback={null}>
+            <ViewerNav />
+          </Suspense>
         </div>
       </body>
     </html>

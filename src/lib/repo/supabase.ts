@@ -1,6 +1,8 @@
 import "server-only";
-import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createPublicClient, type PostgrestError, type SupabaseClient } from "@supabase/supabase-js";
+import { cacheLife } from "next/cache";
 import { monthlyPrice } from "../pricing";
+import { supabaseKey, supabaseUrl } from "../supabase/env";
 import { createClient } from "../supabase/server";
 import type { Catalogue, DataRequest, Member } from "../types";
 import { shapeHousehold } from "./shape";
@@ -54,65 +56,81 @@ function toUserError(error: PostgrestError): Error {
   return new Error(error.message);
 }
 
+interface MyHousehold {
+  viewer_member_id: string;
+  household: { id: string; name: string; owner_name: string };
+  pool: { size_gb: number; cycle_start: string; cycle_end: string };
+  members: (Omit<Member, "allocatedGb"> & { allocated_gb: number; used_gb: number })[];
+  requests: { id: string; member_id: string; gb: number; note: string; status: DataRequest["status"]; created_at: string }[];
+}
+
+/**
+ * Prices and packages are the same for everyone and rarely change, so they're cached across requests
+ * (read with a cookie-less client: the catalogue is public). Edits in Supabase show up within an hour.
+ */
+async function loadCatalogue(): Promise<Catalogue> {
+  "use cache";
+  cacheLife("hours");
+  const supabase = createPublicClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+  const [tiers, packages, settings] = await Promise.all([
+    supabase.from("price_tiers").select("pool_gb, price_lkr").order("pool_gb"),
+    supabase.from("packages").select("id, name, pool_gb, lines").order("sort_order"),
+    supabase.from("settings").select("key, value"),
+  ]);
+  const s = Object.fromEntries((must(settings) as { key: string; value: unknown }[]).map((r) => [r.key, r.value]));
+  return {
+    tiers: (must(tiers) as { pool_gb: number; price_lkr: number }[]).map((t) => ({ poolGb: t.pool_gb, priceLkr: t.price_lkr })),
+    packages: (must(packages) as { id: string; name: string; pool_gb: number; lines: number }[]).map((p) => ({
+      id: p.id,
+      name: p.name,
+      poolGb: p.pool_gb,
+      lines: p.lines,
+    })),
+    extraLinePriceLkr: Number(s.extra_line_price_lkr ?? 0),
+    maxLines: Number(s.max_lines ?? 6),
+  };
+}
+
 export const supabaseRepo: Repo = {
   async getHousehold() {
     const { supabase, uid } = await session();
-    const me = await membership(supabase, uid);
-    if (!me) return null;
-    const hid = me.household_id;
+    if (!uid) return null;
 
-    const [household, members, pool, balances, requests, catalogue] = await Promise.all([
-      supabase.from("households").select("id, name, owner_id").eq("id", hid).single(),
-      supabase
-        .from("household_members")
-        .select("id, label, kind, role, status, msisdn")
-        .eq("household_id", hid)
-        .order("created_at"),
-      supabase
-        .from("pools")
-        .select("size_gb, cycle_start, cycle_end")
-        .eq("household_id", hid)
-        .eq("status", "active")
-        .single(),
-      supabase.from("member_balances").select("member_id, allocated_gb, used_gb").eq("household_id", hid),
-      supabase
-        .from("data_requests")
-        .select("id, member_id, gb, note, status, created_at")
-        .eq("household_id", hid)
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabaseRepo.getCatalogue(),
-    ]);
+    // One round trip for the whole household (see my_household() in supabase/migrations), plus the cached catalogue.
+    const [result, catalogue] = await Promise.all([supabase.rpc("my_household"), loadCatalogue()]);
+    if (result.error) throw toUserError(result.error);
+    const data = result.data as MyHousehold | null;
+    if (!data) return null;
 
-    const h = must(household) as { id: string; name: string; owner_id: string };
-    const owner = must(await supabase.from("profiles").select("display_name").eq("id", h.owner_id).single()) as {
-      display_name: string;
-    };
-    const p = must(pool) as { size_gb: number; cycle_start: string; cycle_end: string };
-    const bal = new Map(
-      (must(balances) as { member_id: string; allocated_gb: number; used_gb: number }[]).map((b) => [b.member_id, b]),
-    );
-
-    const memberRows = must(members) as Omit<Member, "allocatedGb">[];
-    const shapedMembers: Member[] = memberRows.map((m) => ({ ...m, allocatedGb: Number(bal.get(m.id)?.allocated_gb ?? 0) }));
-    const usedGb = Object.fromEntries([...bal].map(([id, b]) => [id, Math.round(Number(b.used_gb) * 10) / 10]));
-
-    const reqs = (
-      must(requests) as { id: string; member_id: string; gb: number; note: string; status: DataRequest["status"]; created_at: string }[]
-    ).map((r) => ({ id: r.id, memberId: r.member_id, gb: r.gb, note: r.note, status: r.status, createdAt: r.created_at }));
+    const members: Member[] = data.members.map((m) => ({
+      id: m.id,
+      label: m.label,
+      kind: m.kind,
+      role: m.role,
+      status: m.status,
+      msisdn: m.msisdn,
+      allocatedGb: Number(m.allocated_gb),
+    }));
 
     return shapeHousehold({
-      id: h.id,
-      name: h.name,
-      ownerName: owner.display_name || "Owner",
-      poolGb: p.size_gb,
-      priceLkr: monthlyPrice(catalogue, p.size_gb, shapedMembers.filter((m) => m.kind === "line").length),
-      cycleStart: p.cycle_start,
-      cycleEnd: p.cycle_end,
-      members: shapedMembers,
-      usedGb,
-      requests: reqs,
-      viewerId: me.id,
+      id: data.household.id,
+      name: data.household.name,
+      ownerName: data.household.owner_name,
+      poolGb: data.pool.size_gb,
+      priceLkr: monthlyPrice(catalogue, data.pool.size_gb, members.filter((m) => m.kind === "line").length),
+      cycleStart: data.pool.cycle_start,
+      cycleEnd: data.pool.cycle_end,
+      members,
+      usedGb: Object.fromEntries(data.members.map((m) => [m.id, Number(m.used_gb)])),
+      requests: data.requests.map((r) => ({
+        id: r.id,
+        memberId: r.member_id,
+        gb: r.gb,
+        note: r.note,
+        status: r.status,
+        createdAt: r.created_at,
+      })),
+      viewerId: data.viewer_member_id,
     });
   },
 
@@ -128,25 +146,13 @@ export const supabaseRepo: Repo = {
     return rows.map((r) => ({ memberId: r.member_id, label: r.label, householdName: r.household_name, ownerName: r.owner_name }));
   },
 
-  async getCatalogue(): Promise<Catalogue> {
-    const supabase = await createClient();
-    const [tiers, packages, settings] = await Promise.all([
-      supabase.from("price_tiers").select("pool_gb, price_lkr").order("pool_gb"),
-      supabase.from("packages").select("id, name, pool_gb, lines").order("sort_order"),
-      supabase.from("settings").select("key, value"),
-    ]);
-    const s = Object.fromEntries((must(settings) as { key: string; value: unknown }[]).map((r) => [r.key, r.value]));
-    return {
-      tiers: (must(tiers) as { pool_gb: number; price_lkr: number }[]).map((t) => ({ poolGb: t.pool_gb, priceLkr: t.price_lkr })),
-      packages: (must(packages) as { id: string; name: string; pool_gb: number; lines: number }[]).map((p) => ({
-        id: p.id,
-        name: p.name,
-        poolGb: p.pool_gb,
-        lines: p.lines,
-      })),
-      extraLinePriceLkr: Number(s.extra_line_price_lkr ?? 0),
-      maxLines: Number(s.max_lines ?? 6),
-    };
+  getCatalogue: loadCatalogue,
+
+  async getMyPhone() {
+    const { supabase, uid } = await session();
+    if (!uid) return null;
+    const { data } = await supabase.from("profiles").select("msisdn").eq("id", uid).maybeSingle();
+    return (data?.msisdn as string | null) ?? null;
   },
 
   async createHousehold(name, displayName) {

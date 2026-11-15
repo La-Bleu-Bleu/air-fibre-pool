@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { cache } from "react";
 import { DEMO_COOKIE, demoForced } from "./mode";
 import { demoRepo } from "./repo/demo";
 import { supabaseRepo } from "./repo/supabase";
@@ -23,15 +24,29 @@ export async function getRepo(): Promise<Repo> {
   return (await isDemo()) ? demoRepo : supabaseRepo;
 }
 
-/** The signed-in person's household. Sends people without one to onboarding. */
-export async function getHousehold(): Promise<HouseholdSummary> {
+/**
+ * The viewer's household, or null if they don't have one. Cached per request, so the layout
+ * (tabs, demo bar) and the page share a single load.
+ */
+export const findHousehold = cache(async (): Promise<HouseholdSummary | null> => {
   await connection(); // per-user, per-request data: never prerender
-  const household = await (await getRepo()).getHousehold();
+  return (await getRepo()).getHousehold();
+});
+
+/** The viewer's household. Sends people without one to onboarding. */
+export async function getHousehold(): Promise<HouseholdSummary> {
+  const household = await findHousehold();
   if (!household) redirect("/welcome");
   return household;
 }
 
+/** Same as getHousehold, but sends members (non-owners) home: for owner-only screens. */
+export async function getHouseholdAsOwner(): Promise<HouseholdSummary> {
+  const household = await getHousehold();
+  if (!household.viewer.isOwner) redirect("/");
+  return household;
+}
+
 export async function getCatalogue() {
-  await connection(); // reads the database at request time
   return (await getRepo()).getCatalogue();
 }

@@ -19,9 +19,13 @@ interface Props {
   catalogue: Catalogue;
   initialPoolGb: number;
   initialLines: { id: string; label: string; msisdn: string; isOwner: boolean; invited: boolean }[];
+  /** setup: first time, "Continue" goes on to Allocate. change: editing an existing plan, saves in place. */
+  mode: "setup" | "change";
+  /** change mode: called after saving or cancelling. */
+  onDone?: () => void;
 }
 
-export function PoolBuilder({ catalogue, initialPoolGb, initialLines }: Props) {
+export function PoolBuilder({ catalogue, initialPoolGb, initialLines, mode, onDone }: Props) {
   const { tiers, packages, extraLinePriceLkr, maxLines } = catalogue;
   const [tierIndex, setTierIndex] = useState(() => Math.max(0, tiers.findIndex((t) => t.poolGb === initialPoolGb)));
   const [lines, setLines] = useState<DraftLine[]>(() => initialLines.map((l) => ({ ...l, key: l.id })));
@@ -32,6 +36,9 @@ export function PoolBuilder({ catalogue, initialPoolGb, initialLines }: Props) {
   const poolGb = tiers[tierIndex].poolGb;
   const price = monthlyPrice(catalogue, poolGb, lines.length);
   const fill = `${(tierIndex / (tiers.length - 1)) * 100}%`;
+  const initialPrice = monthlyPrice(catalogue, initialPoolGb, initialLines.length);
+  const lineKey = (ls: { id?: string; label: string; msisdn: string }[]) => ls.map((l) => `${l.id}|${l.label}|${l.msisdn}`).join(",");
+  const changed = poolGb !== initialPoolGb || lineKey(lines) !== lineKey(initialLines);
 
   function applyPackage(pkgPoolGb: number, pkgLines: number) {
     setTierIndex(tiers.findIndex((t) => t.poolGb === pkgPoolGb));
@@ -49,8 +56,10 @@ export function PoolBuilder({ catalogue, initialPoolGb, initialLines }: Props) {
       const result = await savePlan(
         poolGb,
         lines.map(({ id, label, msisdn }) => ({ id, label, msisdn })),
+        mode === "setup" ? "allocate" : "stay",
       );
       if (result?.error) setError(result.error);
+      else onDone?.();
     });
   }
 
@@ -215,30 +224,64 @@ export function PoolBuilder({ catalogue, initialPoolGb, initialLines }: Props) {
             {error}
           </p>
         )}
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-xs text-muted">
-              {poolGb} GB · home + {lines.length} {lines.length === 1 ? "line" : "lines"}
-            </p>
-            <p className="text-xl font-extrabold tabular-nums" aria-live="polite">
-              {formatLkr(price)}
-              <span className="text-sm font-semibold text-muted">/mo</span>
-            </p>
+        {mode === "setup" ? (
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-xs text-muted">
+                {poolGb} GB · home + {lines.length} {lines.length === 1 ? "line" : "lines"}
+              </p>
+              <p className="text-xl font-extrabold tabular-nums" aria-live="polite">
+                {formatLkr(price)}
+                <span className="text-sm font-semibold text-muted">/mo</span>
+              </p>
+            </div>
+            <button type="button" onClick={submit} disabled={pending} className={primaryButton}>
+              {pending && <Loader2 size={18} className="animate-spin" />}
+              Continue
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={pending}
-            className="bg-brand-gradient flex h-12 items-center gap-2 rounded-2xl px-5 font-bold text-white shadow-lg shadow-brand-600/30 transition active:scale-[0.98] disabled:opacity-70"
-          >
-            {pending && <Loader2 size={18} className="animate-spin" />}
-            Continue
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="mb-3 flex items-center justify-between gap-3 text-sm" aria-live="polite">
+              {changed ? (
+                <>
+                  <p className="text-muted">
+                    <span className="line-through">{initialPoolGb} GB</span> →{" "}
+                    <span className="font-bold text-foreground">{poolGb} GB</span>
+                  </p>
+                  <p className="text-right tabular-nums">
+                    <span className="block text-xs text-muted line-through">{formatLkr(initialPrice)}</span>
+                    <span className="text-lg font-extrabold">{formatLkr(price)}</span>
+                    <span className="text-xs font-semibold text-muted">/mo</span>
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted">No changes yet</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onDone}
+                disabled={pending}
+                className="h-12 flex-1 rounded-2xl border border-border bg-surface font-bold transition hover:border-brand-500"
+              >
+                Cancel
+              </button>
+              <button type="button" onClick={submit} disabled={pending || !changed} className={`${primaryButton} flex-[2] justify-center`}>
+                {pending && <Loader2 size={18} className="animate-spin" />}
+                Save changes
+              </button>
+            </div>
+          </>
+        )}
       </StickyFooter>
     </div>
   );
 }
+
+const primaryButton =
+  "bg-brand-gradient flex h-12 items-center gap-2 rounded-2xl px-5 font-bold text-white shadow-lg shadow-brand-600/30 transition active:scale-[0.98] disabled:opacity-50 disabled:shadow-none";
 
 function AddLineForm({
   existing,

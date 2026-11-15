@@ -32,11 +32,24 @@ Demo mode is also forced when Supabase isn't configured, or with `NEXT_PUBLIC_DE
 > Each number becomes an ordinary Supabase email/password account behind the scenes (`signInWithPhone` in `src/app/actions.ts`).
 > Before real users, replace it with Supabase phone OTP and an SMS provider, or Dialog's own SMS gateway via Supabase's Send SMS hook.
 
+## Ask Dia (assistant)
+
+The **Ask Dia** tab is a chat with Dia, Dialog's digital assistant. It runs differently per mode:
+
+- **Demo mode: scripted, no AI, no API key.** `src/lib/dia/scripted.ts` recognises common questions and requests (the suggestion chips and close variations: who's running low, how much is left, give someone N GB more, what N GB would cost, switch to N GB, approve/decline a request, ask for more data, renewal date) and answers from the demo household's real numbers. Anything off-topic gets the fixed reply.
+- **Real mode: switched off for now.** The tab says Dia isn't available yet. The Claude-powered version is built (`src/app/api/dia/route.ts`, `claude-opus-5-5`, low effort, server-side refusal fallback) and turns on as soon as `ANTHROPIC_API_KEY` is set on the server (Vercel → Environment Variables, **Sensitive**, never `NEXT_PUBLIC_`).
+
+Either way, Dia never changes anything itself: it prepares a **confirm card** (allocations, plan change, request decision, data request), validated against the household by `src/lib/dia/tools.ts`, and the change only happens when the user taps Confirm, through the normal server actions and permission checks. Off-topic requests get `OUT_OF_SCOPE_REPLY` from `src/lib/dia/prompt.ts`.
+
+## Branding
+
+Put the official Dialog logo at `public/brand/dialog-logo.svg` (or `.png`) and the sign-in screen uses it automatically. Use the brand team's file rather than a redrawn one.
+
 ## Project layout
 
 ```
 src/
-  app/                 Routes: / (home), /build (Pool tab), /allocate, /household, /login, /welcome
+  app/                 Routes: / (home), /build (Pool tab), /dia, /allocate, /household, /notifications, /login, /welcome
   components/          UI pieces (bottom nav, pool ring, headers)
   lib/
     data.ts            Data access layer: picks the demo or Supabase repo
@@ -107,6 +120,9 @@ Every push to `main` then deploys automatically.
 - [x] Pool tab shows your current plan; changing it shows before → after. Setup flow only on first run
 - [x] Demo "view as" bar on every screen; members only see the Home and Household tabs
 - [x] Welcome screen: accept an invite, or choose between joining a family's household and starting one
+- [x] Notifications (bell): requests, low data, unallocated GB, invites, request outcomes, renewal
+- [x] Ask Dia: scripted in demo mode; Claude-powered version ready but off until an API key is added
+- [x] Allocate: Save bar only appears with changes; saving stays on the page with a “saved” banner
 - [ ] Real phone OTP (SMS provider or Dialog SMS gateway) instead of the fixed 123456 code
 - [ ] Real usage feed from the network (currently simulated)
 - [ ] Sinhala and Tamil

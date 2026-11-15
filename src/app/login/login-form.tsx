@@ -46,7 +46,7 @@ export function LoginForm() {
     <form onSubmit={next} className="space-y-4">
       <div>
         <h2 className="text-xl font-bold">Sign in with your mobile</h2>
-        <p className="mt-1 text-sm text-muted">Sri Lankan or Malaysian numbers.</p>
+        <p className="mt-1 text-sm text-muted">Sri Lankan or Malaysian numbers (for testing purposes).</p>
       </div>
       <label className="block">
         <span className="sr-only">Mobile number</span>

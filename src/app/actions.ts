@@ -100,8 +100,8 @@ export async function savePlan(poolGb: number, lines: PlanLineInput[], then: "al
   redirect("/allocate?setup=1");
 }
 
-/** Save GB per member (step 2). The total may not exceed the pool. */
-export async function saveAllocations(allocations: Record<string, number>): Promise<ActionResult> {
+/** Save GB per member. The total may not exceed the pool. "home" goes back to Home; "stay" (e.g. from Dia) doesn't navigate. */
+export async function saveAllocations(allocations: Record<string, number>, then: "home" | "stay" = "home"): Promise<ActionResult> {
   const result = await attempt(async () => {
     const h = await asOwner();
     if (Object.keys(allocations).some((id) => !h.members.some((m) => m.id === id)))
@@ -112,7 +112,7 @@ export async function saveAllocations(allocations: Record<string, number>): Prom
     if (total > h.pool.sizeGb) throw new UserError(`That's ${total} GB, but the pool is ${h.pool.sizeGb} GB.`);
     await (await getRepo()).saveAllocations(allocations);
   });
-  if (result) return result;
+  if (result || then === "stay") return result;
   redirect("/");
 }
 

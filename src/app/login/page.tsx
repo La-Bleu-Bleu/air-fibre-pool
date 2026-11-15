@@ -1,8 +1,31 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { redirect } from "next/navigation";
 import { PlayCircle, Wifi } from "lucide-react";
 import { enterDemo } from "@/app/actions";
 import { demoForced } from "@/lib/mode";
 import { LoginForm } from "./login-form";
+
+/**
+ * Dialog logo, if the official file has been added at public/brand/dialog-logo.svg (or .png).
+ * Until then a neutral icon is shown. Use the brand team's asset; don't redraw the logo.
+ */
+const logoFile = ["dialog-logo.svg", "dialog-logo.png"].find((f) =>
+  existsSync(path.join(process.cwd(), "public", "brand", f)),
+);
+
+function BrandMark() {
+  if (logoFile)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- static brand asset, any format
+      <img src={`/brand/${logoFile}`} alt="Dialog" className="h-14 w-auto rounded-2xl bg-white p-2" />
+    );
+  return (
+    <span className="grid size-14 place-items-center rounded-2xl bg-white/20 backdrop-blur">
+      <Wifi size={26} />
+    </span>
+  );
+}
 
 export default function LoginPage() {
   if (demoForced) redirect("/");
@@ -11,9 +34,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh flex-col">
       <section className="bg-brand-gradient relative overflow-hidden rounded-b-[2rem] px-6 pt-[max(env(safe-area-inset-top),48px)] pb-12 text-white">
         <div className="pointer-events-none absolute -top-24 -right-20 size-64 rounded-full bg-white/10 blur-2xl" />
-        <span className="grid size-14 place-items-center rounded-2xl bg-white/20 backdrop-blur">
-          <Wifi size={26} />
-        </span>
+        <BrandMark />
         <h1 className="mt-6 text-[32px] font-extrabold leading-tight tracking-tight">
           One data pool
           <br />

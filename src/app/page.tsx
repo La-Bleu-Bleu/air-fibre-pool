@@ -5,6 +5,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { PoolRing } from "@/components/pool-ring";
 import { getHousehold, isDemo } from "@/lib/data";
 import { daysLeft, formatGb, formatLkr } from "@/lib/format";
+import { badgeCount, notificationsFor } from "@/lib/notifications";
 import { formatMsisdn } from "@/lib/pricing";
 import { resetDemo } from "./actions";
 import { SimulateUsageButton } from "./simulate-usage-button";
@@ -17,7 +18,7 @@ export default async function HomePage() {
   const usedGb = members.reduce((sum, m) => sum + m.usedGb, 0);
   const remainingGb = Math.max(0, pool.sizeGb - usedGb);
   const unallocatedGb = pool.sizeGb - members.reduce((sum, m) => sum + m.allocatedGb, 0);
-  const pendingRequests = household.requests.filter((r) => r.status === "pending").length;
+  const alerts = badgeCount(notificationsFor(household));
 
   const actions = viewer.isOwner
     ? [
@@ -40,14 +41,14 @@ export default async function HomePage() {
             <p className="text-xl font-bold">{viewer.name}</p>
           </div>
           <Link
-            href="/household"
-            aria-label={pendingRequests && viewer.isOwner ? `${pendingRequests} pending requests` : "Household"}
+            href="/notifications"
+            aria-label={alerts ? `Notifications: ${alerts} need attention` : "Notifications"}
             className="relative grid size-10 place-items-center rounded-full bg-white/15 backdrop-blur"
           >
             <Bell size={18} />
-            {viewer.isOwner && pendingRequests > 0 && (
+            {alerts > 0 && (
               <span className="absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-accent-500 text-[11px] font-bold ring-2 ring-brand-600">
-                {pendingRequests}
+                {alerts}
               </span>
             )}
           </Link>

@@ -5,14 +5,18 @@ import Link from "next/link";
 import { Divide, Loader2, Minus, Plus, RotateCcw, Router, Smartphone } from "lucide-react";
 import { saveAllocations } from "@/app/actions";
 import { StickyFooter } from "@/components/sticky-footer";
+import { Toast } from "@/components/toast";
 import { formatGb } from "@/lib/format";
 import { allocationStep } from "@/lib/pricing";
 import type { MemberBalance } from "@/lib/types";
 
-export function Allocator({ poolGb, members }: { poolGb: number; members: MemberBalance[] }) {
+export function Allocator({ poolGb, members, setup = false }: { poolGb: number; members: MemberBalance[]; setup?: boolean }) {
+  // `initial` is re-derived from the server data on every render, so after a save (which refreshes the
+  // page) it matches what was saved and the Save bar disappears.
   const initial = Object.fromEntries(members.map((m) => [m.id, m.allocatedGb]));
   const [allocs, setAllocs] = useState<Record<string, number>>(initial);
   const [error, setError] = useState<string>();
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   const step = allocationStep(poolGb);
@@ -39,8 +43,9 @@ export function Allocator({ poolGb, members }: { poolGb: number; members: Member
   function save() {
     setError(undefined);
     startTransition(async () => {
-      const result = await saveAllocations(allocs);
+      const result = await saveAllocations(allocs, "stay");
       if (result?.error) setError(result.error);
+      else setSavedAt(Date.now());
     });
   }
 
@@ -156,23 +161,24 @@ export function Allocator({ poolGb, members }: { poolGb: number; members: Member
         </Link>
       </p>
 
-      <StickyFooter>
-        {error && (
-          <p role="alert" className="mb-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
-            {error}
-          </p>
-        )}
-        <div className="flex items-center gap-4">
-          <p className="flex-1 text-sm text-muted">
-            {remaining > 0 ? (
-              <>
-                <span className="font-bold text-foreground">{formatGb(remaining)}</span> stays unallocated in the pool
-              </>
-            ) : (
-              "Every GB is allocated"
-            )}
-          </p>
-          {changed ? (
+      {/* Only when there's something to save */}
+      {changed && (
+        <StickyFooter>
+          {error && (
+            <p role="alert" className="mb-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+              {error}
+            </p>
+          )}
+          <div className="flex items-center gap-4">
+            <p className="flex-1 text-sm text-muted">
+              {remaining > 0 ? (
+                <>
+                  <span className="font-bold text-foreground">{formatGb(remaining)}</span> will stay unallocated
+                </>
+              ) : (
+                "Every GB will be allocated"
+              )}
+            </p>
             <button
               type="button"
               onClick={save}
@@ -182,16 +188,24 @@ export function Allocator({ poolGb, members }: { poolGb: number; members: Member
               {pending && <Loader2 size={18} className="animate-spin" />}
               Save
             </button>
+          </div>
+        </StickyFooter>
+      )}
+
+      {savedAt && !changed && (
+        <Toast key={savedAt} onDone={() => setSavedAt(null)}>
+          {setup ? (
+            <>
+              You&apos;re all set.{" "}
+              <Link href="/" className="font-bold underline underline-offset-2">
+                Go to Home
+              </Link>
+            </>
           ) : (
-            <Link
-              href="/"
-              className="flex h-12 items-center rounded-2xl border border-border bg-surface px-5 font-bold transition hover:border-brand-500"
-            >
-              Done
-            </Link>
+            "Allocation saved"
           )}
-        </div>
-      </StickyFooter>
+        </Toast>
+      )}
     </div>
   );
 }

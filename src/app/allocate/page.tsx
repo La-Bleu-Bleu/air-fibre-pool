@@ -11,7 +11,7 @@ export default async function AllocatePage({ searchParams }: PageProps<"/allocat
       <PageHeader eyebrow={setup ? "Get started · 2 of 2" : "Allocate"} title={setup ? "Share it out" : "Who gets what"}>
         Decide how much of the {household.pool.sizeGb} GB pool each connection gets.
       </PageHeader>
-      <Allocator poolGb={household.pool.sizeGb} members={household.members} />
+      <Allocator poolGb={household.pool.sizeGb} members={household.members} setup={setup} />
     </div>
   );
 }

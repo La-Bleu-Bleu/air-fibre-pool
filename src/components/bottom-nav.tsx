@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Layers, SlidersHorizontal, Users } from "lucide-react";
+import { Home, Layers, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 
 const allTabs = [
   { href: "/", label: "Home", icon: Home, ownerOnly: false },
   { href: "/build", label: "Pool", icon: Layers, ownerOnly: true },
+  { href: "/dia", label: "Ask Dia", icon: Sparkles, ownerOnly: false },
   { href: "/allocate", label: "Allocate", icon: SlidersHorizontal, ownerOnly: true },
   { href: "/household", label: "Household", icon: Users, ownerOnly: false },
 ] as const;
